@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>GTS: Stoner Valley - 3D World Build</title>
+    <title>GTS: Stoner Valley - 3D Engine Build</title>
     <style>
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050b14; }
         #renderCanvas { width: 100%; height: 100%; touch-action: none; display: block; }
@@ -19,9 +19,8 @@
             z-index: 10;
         }
     </style>
-    <!-- BabylonJS Core and Procedural Textures via Official CDN -->
-    <script src="https://babylonjs.com"></script>
-    <script src="https://babylonjs.com"></script>
+    <!-- Fixed Production CDN Script Links for Xbox Edge Compatibility -->
+    <script src="https://unpkg.com"></script>
 </head>
 <body>
     <div id="interact-prompt">A: INTERACT | B: HARVEST</div>
@@ -117,7 +116,7 @@
             sunLight = new BABYLON.DirectionalLight("Sun", new BABYLON.Vector3(-0.5, -1, -0.3), scene); sunLight.position = new BABYLON.Vector3(50, 120, 50); sunLight.intensity = 1.8;
             const ambient = new BABYLON.HemisphericLight("Amb", new BABYLON.Vector3(0, 1, 0), scene); ambient.intensity = 0.6;
 
-            // --- 🌅 REAL SKYBOX SCENERY LAYER ---
+            // --- REAL SKYBOX LAYER ---
             skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, scene);
             skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
             skyboxMaterial.backFaceCulling = false;
@@ -125,53 +124,54 @@
             skybox.material = skyboxMaterial;
             skybox.infiniteDistance = true;
 
-            // --- 🛣️ WORLD LANDSCAPE GROUND & ROADS ---
+            // --- WORLD LANDSCAPE GROUND & ROADS ---
             const ground = BABYLON.MeshBuilder.CreateGround("Floor", { width: 800, height: 800 }, scene);
-            const grassMat = new BABYLON.PBRMaterial("grassMat", scene);
-            grassMat.albedoColor = new BABYLON.Color3(0.12, 0.35, 0.15); // Vibrant Grass Green
-            grassMat.roughness = 0.9; ground.material = grassMat; ground.receiveShadows = true;
+            const grassMat = new BABYLON.StandardMaterial("grassMat", scene);
+            grassMat.diffuseColor = new BABYLON.Color3(0.12, 0.35, 0.15);
+            ground.material = grassMat; ground.receiveShadows = true;
 
-            // Main Crossroads Roads Layout
             const mainStreetX = BABYLON.MeshBuilder.CreateGround("StreetX", { width: 800, height: 16 }, scene);
             mainStreetX.position.y = 0.01;
-            const roadMat = new BABYLON.PBRMaterial("roadMat", scene);
-            roadMat.albedoColor = new BABYLON.Color3(0.15, 0.15, 0.18); // Asphalt Charcoal Grey
-            roadMat.roughness = 0.7; mainStreetX.material = roadMat; mainStreetX.receiveShadows = true;
+            const roadMat = new BABYLON.StandardMaterial("roadMat", scene);
+            roadMat.diffuseColor = new BABYLON.Color3(0.15, 0.15, 0.18);
+            mainStreetX.material = roadMat; mainStreetX.receiveShadows = true;
 
             const mainStreetZ = BABYLON.MeshBuilder.CreateGround("StreetZ", { width: 16, height: 800 }, scene);
             mainStreetZ.position.y = 0.01; mainStreetZ.material = roadMat; mainStreetZ.receiveShadows = true;
 
-            // --- 🏙️ 3D SKYLINE BUILDINGS ARCHITECTURE ---
+            // --- 3D SKYLINE BUILDINGS ---
             for (let x = -250; x <= 250; x += 90) {
                 for (let z = -250; z <= 250; z += 90) {
-                    if (Math.abs(x) < 50 && Math.abs(z) < 50) continue; // Keep space for the HQ
+                    if (Math.abs(x) < 50 && Math.abs(z) < 50) continue;
                     const h = 30 + Math.random() * 45;
                     const b = BABYLON.MeshBuilder.CreateBox("Bld", { width: 32, depth: 32, height: h }, scene); b.position = new BABYLON.Vector3(x, h / 2, z);
-                    const bMat = new BABYLON.PBRMaterial("bMat", scene);
-                    bMat.albedoColor = new BABYLON.Color3(0.25, 0.28, 0.35); // Concrete Skyline Blue/Grey
+                    const bMat = new BABYLON.StandardMaterial("bMat", scene);
+                    bMat.diffuseColor = new BABYLON.Color3(0.25, 0.28, 0.35);
                     b.material = bMat;
                 }
             }
 
-            // Upgraded HQ Building Block
+            // HQ Building Block
             const hq = BABYLON.MeshBuilder.CreateBox("HQ", { width: 38, depth: 38, height: 10 }, scene); hq.position = new BABYLON.Vector3(0, 5, 0);
-            const hqMat = new BABYLON.PBRMaterial("hqMat", scene); hqMat.albedoColor = new BABYLON.Color3(0.05, 0.25, 0.12); hq.material = hqMat;
+            const hqMat = new BABYLON.StandardMaterial("hqMat", scene); hqMat.diffuseColor = new BABYLON.Color3(0.05, 0.25, 0.12); hq.material = hqMat;
+            
             const entranceGlow = BABYLON.MeshBuilder.CreateCylinder("Portal", { diameter: 4.5, height: 0.15 }, scene); entranceGlow.position = new BABYLON.Vector3(0, 0.08, -19.2);
-const entranceMat = new BABYLON.StandardMaterial("eMat", scene); entranceMat.emissiveColor = new BABYLON.Color3(0.0, 1.0, 0.4); entranceGlow.material = entranceMat;
-// --- 🕺 DETAILED PLAYER CHARACTER AVATAR MESH ---
-playerMesh = new BABYLON.Mesh("PlayerRoot", scene);
+            const entranceMat = new BABYLON.StandardMaterial("eMat", scene); entranceMat.emissiveColor = new BABYLON.Color3(0.0, 1.0, 0.4); entranceGlow.material = entranceMat;
+
+            // --- PLAYER CHARACTER AVATAR ---
+            playerMesh = new BABYLON.Mesh("PlayerRoot", scene);
 playerMesh.position = new BABYLON.Vector3(0, 0, -24);
 playerBody = BABYLON.MeshBuilder.CreateCylinder("PlayerBody", { diameter: 1.4, height: 2.2 }, scene);
 playerBody.position.y = 1.1; playerBody.parent = playerMesh;
-const bodyMat = new BABYLON.PBRMaterial("bMat", scene); bodyMat.albedoColor = new BABYLON.Color3(0.1, 0.5, 0.9); playerBody.material = bodyMat;
+const bodyMat = new BABYLON.StandardMaterial("bMat", scene); bodyMat.diffuseColor = new BABYLON.Color3(0.1, 0.5, 0.9); playerBody.material = bodyMat;
 playerHead = BABYLON.MeshBuilder.CreateSphere("PlayerHead", { diameter: 1.1 }, scene);
 playerHead.position.y = 2.5; playerHead.parent = playerMesh;
-const headMat = new BABYLON.PBRMaterial("hMat", scene); headMat.albedoColor = new BABYLON.Color3(0.95, 0.75, 0.6); playerHead.material = headMat;
-// --- 🚗 VEHICLES ---
+const headMat = new BABYLON.StandardMaterial("hMat", scene); headMat.diffuseColor = new BABYLON.Color3(0.95, 0.75, 0.6); playerHead.material = headMat;
+// --- VEHICLES ---
 sportsCarMesh = BABYLON.MeshBuilder.CreateBox("SportsCar", { width: 2.4, depth: 4.8, height: 1.3 }, scene); sportsCarMesh.position = new BABYLON.Vector3(12, 0.65, -24);
-const scMat = new BABYLON.PBRMaterial("scMat", scene); scMat.albedoColor = new BABYLON.Color3(0.9, 0.05, 0.05); sportsCarMesh.material = scMat;
+const scMat = new BABYLON.StandardMaterial("scMat", scene); scMat.diffuseColor = new BABYLON.Color3(0.9, 0.05, 0.05); sportsCarMesh.material = scMat;
 deliveryTruckMesh = BABYLON.MeshBuilder.CreateBox("TruckMesh", { width: 3.0, depth: 7.0, height: 2.8 }, scene); deliveryTruckMesh.position = new BABYLON.Vector3(-14, 1.4, -26);
-const tMat = new BABYLON.PBRMaterial("tMat", scene); tMat.albedoColor = new BABYLON.Color3(0.4, 0.45, 0.42); deliveryTruckMesh.material = tMat;
+const tMat = new BABYLON.StandardMaterial("tMat", scene); tMat.diffuseColor = new BABYLON.Color3(0.4, 0.45, 0.42); deliveryTruckMesh.material = tMat;
 activeVehicle = new VehicleController(sportsCarMesh, "Sports");
 // Traffic & Cops
 for(let i=0; i<6; i++) {
@@ -182,7 +182,7 @@ for(let i=0; i<3; i++) {
 let cop = BABYLON.MeshBuilder.CreateBox("CopCar", {width:2.4, depth:4.8, height:1.6}, scene); cop.position = new BABYLON.Vector3(300, 0.8, 300); cop.setEnabled(false);
 let copMat = new BABYLON.StandardMaterial("cop", scene); copMat.diffuseColor = new BABYLON.Color3(0.05,0.05,0.1); cop.material = copMat; copCars.push({mesh:cop, active:false});
 }
-// Weather Systems Setup
+// Weather Systems
 rainParticles = new BABYLON.ParticleSystem("Rain", 80, scene);
 rainParticles.emitter = new BABYLON.Vector3(0, 25, 0); rainParticles.minEmitBox = new BABYLON.Vector3(-25, 0, -25); rainParticles.maxEmitBox = new BABYLON.Vector3(25, 0, 25);
 rainParticles.color1 = new BABYLON.Color4(0.5, 0.7, 1.0, 0.3); rainParticles.gravity = new BABYLON.Vector3(0, -18, 0); rainParticles.emitRate = 0; rainParticles.start();
@@ -203,7 +203,6 @@ let growBox = BABYLON.MeshBuilder.CreateBox("GrowRow_"+i, {width: 12, depth: 3, 
 growBox.position = new BABYLON.Vector3(-10, 0.25, 10 - (i * 6));
 let gMat = new BABYLON.StandardMaterial("gMat"+i, scene); gMat.diffuseColor = new BABYLON.Color3(0.2, 0.3, 0.2); growBox.material = gMat;
 structures.push(growBox);
-// Grow Plant Nodes
 let p = BABYLON.MeshBuilder.CreateCylinder("PlantBud_"+i, {diameterTop: 0.9, diameterBottom: 0.3, height: Math.max(0.1, plantGrowth[i] * 2.5)}, scene);
 p.position = new BABYLON.Vector3(-10, (plantGrowth[i] * 1.25) + 0.25, 10 - (i * 6));
 let pMat = new BABYLON.StandardMaterial("pMat"+i, scene); pMat.emissiveColor = new BABYLON.Color3(0.1, 0.4 + (plantGrowth[i] * 0.6), 0.1); p.material = pMat;
@@ -221,13 +220,11 @@ initGame();
 engine.runRenderLoop(() => {
 input.poll();
 timeOfDayClock = (timeOfDayClock + 0.0025) % 24;
-// --- 🌤️ SKYBOX CONTEXT COLOR ROTATION LOOP ---
+// Skybox engine transitions
 if (timeOfDayClock >= 6 && timeOfDayClock < 18) {
-// Daytime clear horizon blue
 skyboxMaterial.emissiveColor = new BABYLON.Color3(0.4, 0.6, 0.9);
 sunLight.intensity = 1.8;
 } else {
-// Nighttime dark space atmosphere
 skyboxMaterial.emissiveColor = new BABYLON.Color3(0.02, 0.04, 0.08);
 sunLight.intensity = 0.3;
 }
@@ -245,7 +242,7 @@ cop.mesh.rotation.y = Math.atan2(dir.x, dir.z); cop.mesh.position.addInPlace(dir
 if(stateMode === "Driving" && BABYLON.Vector3.Distance(cop.mesh.position, activeVehicle.mesh.position) < 4.0) { stars = Math.min(5, stars + 1); cooldown = 500; }
 }
 });
-// Street Obstacles Frame Loop
+// Street Traffic Loop
 trafficCars.forEach(car => {
 car.position.z += 0.22; if (car.position.z > 300) car.position.z = -300;
 if(stateMode === "Driving" && BABYLON.Vector3.Distance(activeVehicle.mesh.position, car.position) < 4.2) { if(stars === 0) { stars = 1; cooldown = 500; } }
@@ -294,12 +291,11 @@ missionMarker.position.copyFrom(nodes[Math.floor(Math.random() * nodes.length)])
 let m = new BABYLON.StandardMaterial("m", scene); m.emissiveColor = new BABYLON.Color3(0.9,0.1,0.1); missionMarker.material = m;
 }
 if (input.wasButtonPressed("Menu")) { SaveSystem.save({ cash, bizBank, stock, unlocks }); }
-// Movement Calculations
-const horizontalAxis = (input.axes && input.axes[0]) ? input.axes[0] : 0;
-const verticalAxis = (input.axes && input.axes[1]) ? input.axes[1] : 0;
+// Movement Axis Core Calculations
+const horizontalAxis = (input.axes && input.axes.length >= 2) ? input.axes[0] : 0;
+const verticalAxis = (input.axes && input.axes.length >= 2) ? input.axes[1] : 0;
 if (stateMode === "Walking") {
 playerMesh.position.x += horizontalAxis * 0.18; playerMesh.position.z += -verticalAxis * 0.18;
-// Turn character face mesh based on movement angle vector
 if (Math.abs(horizontalAxis) > 0.1 || Math.abs(verticalAxis) > 0.1) {
 playerMesh.rotation.y = Math.atan2(horizontalAxis, -verticalAxis);
 }
@@ -316,7 +312,7 @@ if (!isInsideHQ(playerMesh.position)) { stateMode = "Walking"; rebuildDispensary
 activeVehicle.update(input.buttons.RT, input.buttons.LT, horizontalAxis, currentWeather === "RAIN");
 camera.position.x = activeVehicle.mesh.position.x; camera.position.z = activeVehicle.mesh.position.z - 18;
 }
-// HUD Sync
+// HUD Sync Update Loop
 document.getElementById("hud-cash").innerText = cash; document.getElementById("hud-biz-bank").innerText = bizBank;
 document.getElementById("hud-stock").innerText = stock; document.getElementById("hud-grows").innerText = unlocks.grows;
 document.getElementById("hud-dispensers").innerText = unlocks.dispensers; document.getElementById("hud-mission").innerText = activeMission;
@@ -327,5 +323,4 @@ scene.render();
 });
 window.addEventListener('resize', () => { engine.resize(); });
 });
-
 
