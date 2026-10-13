@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>GTS: Vice Stoner City</title>
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #ff007f; font-family: 'Arial Black', Gadget, sans-serif; }
+        #gameCanvas { width: 100%; height: 100%; display: none; background: #000; }
+        
+        /* Miami Vice Theme Loading Screen UI */
+        #loader {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: linear-gradient(180deg, #ff007f 0%, #3d0066 50%, #00f0ff 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+        }
+        .load-title { color: #00f0ff; font-size: 55px; font-weight: 900; text-shadow: 4px 4px 0px #ff007f, 0 0 30px rgba(0,240,255,0.8); margin-bottom: 2px; letter-spacing: 5px; transform: skewX(-10deg); }
+        .load-subtitle { color: #ffffff; font-size: 16px; margin-bottom: 45px; letter-spacing: 3px; font-style: italic; text-shadow: 2px 2px 4px #000; }
+        .bar-bg { width: 340px; height: 16px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 3px solid #00f0ff; overflow: hidden; box-shadow: 0 0 15px rgba(0,240,255,0.4); }
+        .bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #ff007f, #00f0ff); box-shadow: 0 0 12px #ff007f; }
+        .status { color: #ffffff; font-size: 12px; margin-top: 20px; font-family: monospace; text-shadow: 1px 1px 2px #000; font-weight: bold; }
+
+        /* Neon HUD Layout */
+        #hud {
+            position: absolute; top: 20px; left: 20px; color: #00f0ff; font-size: 13px; font-weight: bold; font-family: monospace;
+            text-shadow: 2px 2px 4px #000; pointer-events: none; background: rgba(15, 5, 25, 0.85); padding: 18px; border-radius: 8px; border: 2px solid #ff007f;
+            display: none; z-index: 10; line-height: 1.5; box-shadow: 0 0 15px rgba(255,0,127,0.3);
+        }
+        .hud-highlight { color: #ff007f; text-shadow: 0 0 8px #ff007f; }
+        .hud-gold { color: #ffff00; }
+        
+        /* Pause & Settings Panel UI Menu Overlay */
+        #pauseOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(10, 3, 20, 0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 90;
+            border: 4px solid #ff007f; box-sizing: border-box;
+        }
+        .menu-box { background: #1a052e; border: 3px solid #00f0ff; padding: 40px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 0 30px rgba(0,240,255,0.5); }
+        .menu-title { color: #ff007f; font-size: 36px; font-weight: 900; margin-bottom: 30px; text-shadow: 0 0 10px #ff007f; transform: skewX(-5deg); }
+        .setting-row { display: flex; justify-content: space-between; width: 320px; margin-bottom: 20px; color: #fff; font-size: 16px; font-weight: bold; align-items: center; }
+        .setting-btn { background: #ff007f; color: #fff; border: none; padding: 8px 16px; font-weight: bold; font-family: monospace; border-radius: 4px; box-shadow: 0 0 8px #ff007f; }
+        .resume-text { color: #00f0ff; margin-top: 25px; font-size: 13px; font-weight: bold; animation: blink 1s infinite; }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        #prompt {
+            position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); color: #fff; font-family: sans-serif;
+            font-size: 16px; font-weight: bold; text-shadow: 2px 2px 4px #000; background: rgba(255,0,127,0.9); padding: 12px 24px; border-radius: 20px; 
+            display: none; z-index: 10; border: 2px solid #00f0ff; box-shadow: 0 0 15px #00f0ff; letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Miami Style Loader Sequence Screen -->
+    <div id="loader">
+        <div class="load-title">VICE STONER CITY</div>
+        <div class="load-subtitle">GRAND THEFT DISPENSARY ENGINE BUILD v6.5</div>
+        <div class="bar-bg"><div id="bar" class="bar-fill"></div></div>
+        <div id="statusText" class="status">STREAMING EXTENDED RETRO MIAMI ASSETS GRID...</div>
+    </div>
+
+    <!-- Pause & Settings Overlay System Menu Box -->
+    <div id="pauseOverlay">
+        <div class="menu-box">
+            <div class="menu-title">GAME PAUSED</div>
+            <div class="setting-row">
+                <span>TRAFFIC DENSITY</span>
+                <button id="cfgTraffic" class="setting-btn">NORMAL</button>
+            </div>
+            <div class="setting-row">
+                <span>DRIVING SPEED</span>
+                <button id="cfgSpeed" class="setting-btn">FAST</button>
+            </div>
+            <div class="setting-row">
+                <span>TIME OF DAY</span>
+                <button id="cfgTime" class="setting-btn">CYCLED</button>
+            </div>
+            <div class="resume-text">PRESS START/MENU TO RESUME EMPIRE</div>
+        </div>
+    </div>
+
+    <!-- Active Interface HUD Screen Overlay Panels Elements -->
+    <div id="prompt">PRESS A TO INTERACT</div>
+    <div id="hud">
+        <div class="hud-line">💸 WALLET CASH: <span id="hud-cash" class="hud-gold">$5000</span></div>
+        <div class="hud-line">🏦 BUSINESS BANK: <span id="hud-biz-bank" class="hud-gold">$15000</span></div>
+        <div class="hud-line">🌿 DISPENSARY STOCK: <span id="hud-stock" class="hud-highlight">100</span> / 500 oz</div>
+        <div class="hud-line">🏪 EMPIRE UPGRADES MASTER UNLOCKED:</div>
+        <div class="hud-line">&nbsp;&nbsp;• Grow Rows Active: <span id="hud-grows">0</span>/3</div>
+        <div class="hud-line">&nbsp;&nbsp;• Counter Dispensers: <span id="hud-dispensers">0</span>/2</div>
+        <div class="hud-line">🚓 POLICE PURSUIT WANTED LEVEL: <span id="hud-stars" class="hud-highlight">CLEAR</span></div>
+        <div class="hud-line">📦 CONTRACT MISSION: <span id="hud-mission">NONE</span></div>
+        <div class="hud-line">⏰ TIME: <span id="hud-time">12:00</span> | <span id="hud-weather">CLEAR</span></div>
+        <div class="hud-line">🌴 REGION SQUADRON: <span id="hud-location" class="hud-highlight">NEON MIAMI BAY</span></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const loadBar = document.getElementById("bar");
+        const loadText = document.getElementById("statusText");
+        const loadScreen = document.getElementById("loader");
+        const pauseOverlay = document.getElementById("pauseOverlay");
+        const hudElement = document.getElementById('hud');
+        const prompt = document.getElementById("prompt");
+
+        // Game State Core Saves Rigs
+        const SaveSystem = {
+            save(data) { try { localStorage.setItem("STONER_V65_SAVE", JSON.stringify(data)); } catch(e){} },
+            load() { try { let d = localStorage.getItem("STONER_V65_SAVE"); return d ? JSON.parse(d) : null; } catch(e){ return null; } }
+        };
+
+        // Complete Hardware Level Controller Polling Layer Map
+        class XboxInputAPI {
+            constructor() {
+                this.index = null;
+                this.axes = [0, 0, 0, 0];
+                this.buttons = { A:false, B:false, X:false, Y:false, LT:0, RT:0, Menu:false };
+                this.prevButtons = { ...this.buttons };
+                window.addEventListener("gamepadconnected", (e) => { this.index = e.gamepad.index; });
+            }
+            poll() {
+                if (this.index === null) {
+                    let gps = navigator.getGamepads();
+                    for(let i=0; i<gps.length; i++) { if(gps[i]) { this.index = i; break; } }
+                }
+                if (this.index === null) return;
+                let gp = navigator.getGamepads()[this.index];
+                if (!gp) return;
+                this.prevButtons = { ...this.buttons };
+                if(gp.axes && gp.axes.length >= 2) {
+                    this.axes = [Math.abs(gp.axes[0])>0.22 ? gp.axes[0] : 0, Math.abs(gp.axes[1])>0.22 ? gp.axes[1] : 0];
+                }
+                if(gp.buttons && gp.buttons.length >= 10) {
+                    this.buttons = {
+                        A: gp.buttons[0].pressed, B: gp.buttons[1].pressed, X: gp.buttons[2].pressed, Y: gp.buttons[3].pressed,
+                        LT: gp.buttons[6].value, RT: gp.buttons[7].value, Menu: gp.buttons[9].pressed
+                    };
+                }
+            }
+            pressed(b) { return this.buttons[b] && !this.prevButtons[b]; }
+        }
+
+        const input = new XboxInputAPI();
+
+        // Game Configuration Properties Setup
+        let cash = 5000, bizBank = 15000, stock = 100, stars = 0, timeClock = 12.0;
+        let unlocks = { grows: 0, dispensers: 0 };
+        let stateMode = "Walking"; // Walking, Driving, Interior
+        let isPaused = false;
+        let activeMission = "NONE", missionStage = 0, missionX = 0, missionY = 0;
+        let loopTimer = 0, plantGrowth = [0, 0, 0];
+
+        // Settings variables
+        let optTraffic = "NORMAL", optSpeed = "FAST", optTime = "CYCLED";
+
+        // HUUGE Expanded City Coordinate Positions Map
+        let mapWidth = 3000, mapHeight = 3000;
+        let px = 1500, py = 1500, pa = 0; // Player global positions
+        let cx = 1560, cy = 1540, ca = 0, cSpeed = 0; // Sports Car global tracks
+        let tx = 1420, ty = 1580, ta = 0, tSpeed = 0; // Truck metrics vector positions
+        let hqX = 1500, hqY = 1350, hqSize = 130; // HQ Bounds Dimensions
+
+        // Traffic Light Intersection Grid Structures Setup
+        let intersections = [
+            { x: 1500, y: 1500, timer: 0, state: "NS_GREEN" },
+            { x: 1000, y: 1500, timer: 60, state: "EW_GREEN" },
+            { x: 2000, y: 1500, timer: 120, state: "NS_GREEN" },
+            { x: 1500, y: 1000, timer: 40, state: "EW_GREEN" },
+            { x: 1500, y: 2000, timer: 90, state: "NS_GREEN" }
+        ];
+
+        // Generate massive array of skyline buildings block vectors layout positions
+        let buildings = [];
+        let buildingColors = ["#1a052e", "#0a192f", "#12021c", "#02111a", "#140316"];
+        for(let i=0; i<95; i++) {
+            let bx = Math.random() * (mapWidth - 200) + 100;
+            let by = Math.random() * (mapHeight - 200) + 100;
+            if (Math.hypot(bx - hqX, by - hqY) < 220) continue; // Clear central HQ area
+            buildings.push({
+                x: bx, y: by, w: 90 + Math.random()*70, h: 90 + Math.random()*70,
+                color: buildingColors[Math.floor(Math.random()*buildingColors.length)],
+                neonColor: Math.random() > 0.5 ? "#ff007f" : "#00f0ff"
+            });
+        }
+
+        // Live procedural traffic simulation loops blocks setup
+        let traffic = [];
+        const spawnTraffic = () => {
+            traffic = [];
+            let count = optTraffic === "NORMAL" ? 22 : (optTraffic === "HEAVY" ? 40 : 8);
+            for(let i=0; i<count; i++) {
+                // Alternating spawn tracking slots on grid corridors
+                let isVertical = Math.random() > 0.5;
+                traffic.push({
+                    x: isVertical ? (Math.random()>0.5?1500:(Math.random()>0.5?1000:2000)) : Math.random()*mapWidth,
+                    y: isVertical ? Math.random()*mapHeight : (Math.random()>0.5?1500:(Math.random()>0.5?1000:2000)),
+                    speed: 1.8 + Math.random()*2,
+                    isVertical: isVertical,
+                    dir: Math.random() > 0.5 ? 1 : -1,
+                    color: Math.random() > 0.5 ? "#00f0ff" : "#ffff00",
+                    isWaiting: false
+                });
+            }
+        };
+
+        // Interactive Menu Actions Rigs Click Controllers Linking Interface
+        document.getElementById("cfgTraffic").onclick = () => {
+            optTraffic = optTraffic === "NORMAL" ? "HEAVY" : (optTraffic === "HEAVY" ? "LIGHT" : "NORMAL");
+            document.getElementById("cfgTraffic").innerText = optTraffic; spawnTraffic();
+        };
+        document.getElementById("cfgSpeed").onclick = () => {
+            optSpeed = optSpeed === "FAST" ? "REALISTIC" : "FAST";
+            document.getElementById("cfgSpeed").innerText = optSpeed;
+        };
+        document.getElementById("cfgTime").onclick = () => {
+            optTime = optTime === "CYCLED" ? "ALWAYS NIGHT" : (optTime === "ALWAYS NIGHT" ? "ALWAYS DAY" : "CYCLED");
+            document.getElementById("cfgTime").innerText = optTime;
+        };
+
+        // Run Loading pipeline
+        let loadProgress = 0;
+        const loadPhases = ["COMPILING EXTENDED RETRO VENUE BUFFERS...", "GENERATING MASSIVE VICE CITY MIAMI ROADS...", "HOOKING HARDWARE INTERACTION MATRIX...", "PREPARING VAULTED EMPIRE FILES...", "WELCOME TO VICE STONER CITY SHORE!"];
+        
+        const processLoader = () => {
+            loadProgress += 2;
+            loadBar.style.width = loadProgress + "%";
+            if (loadProgress % 20 === 0) loadText.innerText = loadPhases[Math.min(4, Math.floor(loadProgress/20))];
+            if (loadProgress < 100) {
+                setTimeout(processLoader, 30);
+            } else {
+                loadScreen.style.display = "none";
+                canvas.style.display = "block";
+                hudElement.style.display = "block";
+                resizeCanvas();
+                spawnTraffic();
+                let saved = SaveSystem.load();
+                if(saved) { cash=saved.cash; bizBank=saved.bizBank; stock=saved.stock; unlocks=saved.unlocks; }
+                window.requestAnimationFrame(renderLoopFrame);
+            }
+        };
+
+        const resizeCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        window.addEventListener('resize', resizeCanvas);
+
+        // Main Render Loop Frame Execution
+        const renderLoopFrame = () => {
+            input.poll();
+
+            // Toggle settings menu panel
+            if (input.pressed("Menu")) {
+                isPaused = !isPaused;
+                pauseOverlay.style.display = isPaused ? "flex" : "none";
+            }
+
+            if (!isPaused) {
+                loopTimer++;
+                if (optTime === "CYCLED") timeClock = (timeClock + 0.0015) % 24;
+                else if (optTime === "ALWAYS NIGHT") timeClock = 22.0;
+                else timeClock = 12.0;
+
+                // Handle traffic signals clocks cycles lines loops
+                intersections.forEach(inst => {
+                    inst.timer++;
+                    if(inst.timer >= 240) { inst.timer = 0; inst.state = inst.state === "NS_GREEN" ? "EW_GREEN" : "NS_GREEN"; }
+                });
+
+                let moveMult = optSpeed === "FAST" ? 1.4 : 0.9;
+
+                // Core State Vector Physics Handlers Mappings
+                if (stateMode === "Walking") {
+                    px += input.axes[0] * 4.2 * moveMult;
+                    py += input.axes[1] * 4.2 * moveMult;
+                    if (Math.abs(input.axes[0]) > 0.1 || Math.abs(input.axes[1]) > 0.1) pa = Math.atan2(input.axes[0], input.axes[1]);
+
+                    // Confines global matrix box boundaries checks
+                    px = Math.max(20, Math.min(mapWidth - 20, px)); py = Math.max(20, Math.min(mapHeight - 20, py));
+
+                    // Entrance corridor bounding validation
+                    if(px > hqX - hqSize/2 && px < hqX + hqSize/2 && py > hqY - hqSize/2 && py < hqY + hqSize/2) {
+                        stateMode = "Interior"; px = 400; py = canvas.height - 90;
+                    }
+
+                    if (input.pressed("Y")) {
+                        if (Math.hypot(px - cx, py - cy) < 55) { stateMode = "Driving"; activeVehicle = "Sports"; }
+                        else if (Math.hypot(px - tx, py - ty) < 65) { stateMode = "Driving"; activeVehicle = "Truck"; }
+                    }
+                }
+                else if (stateMode === "Driving") {
+                    if (activeVehicle === "Sports") {
+                        cSpeed += input.buttons.RT * 0.35 * moveMult - input.buttons.LT * 0.45 * moveMult;
+                        cSpeed *= 0.95; ca += input.axes[0] * 0.048;
+                        cx += Math.cos(ca) * cSpeed; cy += Math.sin(ca) * cSpeed;
+                        cx = Math.max(20, Math.min(mapWidth - 20, cx)); cy = Math.max(20, Math.min(mapHeight - 20, cy));
+                        px = cx; py = cy;
+                        if(input.pressed("Y")) { stateMode = "Walking"; px = cx - 40; py = cy; cSpeed = 0; }
+                    } else {
+                        tSpeed += input.buttons.RT * 0.22 * moveMult - input.buttons.LT * 0.30 * moveMult;
+                        tSpeed *= 0.93; ta += input.axes[0] * 0.038;
+                        tx += Math.cos(ta) * tSpeed; ty += Math.sin(ta) * tSpeed;
+                        tx = Math.max(20, Math.min(mapWidth - 20, tx)); ty = Math.max(20, Math.min(mapHeight - 20, ty));
+                        px = tx; py = ty;
+                        if(input.pressed("Y")) { stateMode = "Walking"; px = tx - 50; py = ty; tSpeed = 0; }
+                    }
+                }
+                else if (stateMode === "Interior") {
+                    px += input.axes[0] * 3.5; py += input.axes[1] * 3.5;
+                    if (Math.abs(input.axes[0]) > 0.1 || Math.abs(input.axes[1]) > 0.1) pa = Math.atan2(input.axes[0], input.axes[1]);
+                    if(py > canvas.height - 40) { stateMode = "Walking"; px = hqX; py = hqY + hqSize/2 + 25; }
+
+                    for(let i=0; i<unlocks.grows; i++) { if(plantGrowth[i] < 100) plantGrowth[i] += 0.10; }
+                    if(loopTimer % 180 === 0 && unlocks.dispensers > 0 && stock > 0) { stock = Math.max(0, stock - unlocks.dispensers); bizBank += unlocks.dispensers * 120; }
+
+                    if(input.pressed("A")) {
+                        if (unlocks.grows < 3 && bizBank >= 2000) { bizBank -= 2000; unlocks.grows++; }
+                        else if (unlocks.dispensers < 2 && bizBank >= 4000) { bizBank -= 4000; unlocks.dispensers++; }
+                    }
+                    if(input.pressed("B")) {
+                        for(let i=0; i<unlocks.grows; i++) { if(plantGrowth[i] >= 80) { plantGrowth[i] = 0; stock = Math.min(500, stock + 45); } }
+                    }
+                }
+
+                // Deploy open map job lines
+                if(stateMode === "Walking" && activeMission === "NONE" && input.pressed("X")) {
+                    activeMission = "MIAMI DROP CONTRACT"; missionStage = 1; 
+                    missionX = Math.random() * (mapWidth - 400) + 200; missionY = Math.random() * (mapHeight - 400) + 200;
+                }
+                if(activeMission !== "NONE") {
+                    if(Math.hypot(px - missionX, py - missionY) < 55) {
+                        if(missionStage === 1) { missionStage = 2; missionX = hqX; missionY = hqY + 40; }
+                        else { bizBank += 6000; stock = Math.min(500, stock + 120); activeMission = "NONE"; }
+                    }
+                }
+
+                // Simulate Live Simulated Traffic Mechanics Loops
+                traffic.forEach(car => {
+                    let closestLight = null, minDist = 120;
+                    intersections.forEach(inst => {
+                        let d = Math.hypot(car.x - inst.x, car.y - inst.y);
+                        if (d < minDist) { minDist = d; closestLight = inst; }
+                    });
+
+                    car.isWaiting = false;
+                    if (closestLight && minDist < 70) {
+                        // Check if stopping for traffic light intersection positions configuration vectors
+                        if (car.isVertical && closestLight.state === "EW_GREEN" && ((car.dir > 0 && car.y < closestLight.y) || (car.dir < 0 && car.y > closestLight.y))) car.isWaiting = true;
+                        if (!car.isVertical && closestLight.state === "NS_GREEN" && ((car.dir > 0 && car.x < closestLight.x) || (car.dir < 0 && car.x > closestLight.x))) car.isWaiting = true;
+                    }
+
+                    if (!car.isWaiting) {
+                        if (car.isVertical) { car.y += car.speed * car.dir * moveMult; if(car.y<0||car.y>mapHeight) car.dir *= -1; }
+                        else { car.x += car.speed * car.dir * moveMult; if(car.x<0||car.x>mapWidth) car.dir *= -1; }
+                    }
+                });
+            }
+
+            // --- ADVANCED 2D CANVAS PERSPECTIVE RENDER CORE MATRIX ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Compute focus camera frame positions centering avatar asset natively
+            let camX = px - canvas.width / 2;
+            let camY = py - canvas.height / 2;
+            if(stateMode === "Interior") { camX = 400 - canvas.width/2; camY = canvas.height/2 - canvas.height/2; }
+
+            if (stateMode !== "Interior") {
+                // Drawing Neon Miami Ocean Sunset Night Floor
+                let isNight = timeClock < 6 || timeClock >= 18;
+                ctx.fillStyle = isNight ? "#090314" : "#1a0d36";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Matrix Grid Lines
+                ctx.strokeStyle = isNight ? "rgba(255,0,127,0.07)" : "rgba(0,240,255,0.08)";
+                ctx.lineWidth = 1;
+                for(let gx = 0; gx < mapWidth; gx += 80) { ctx.beginPath(); ctx.moveTo(gx - camX, 0); ctx.lineTo(gx - camX, canvas.height); ctx.stroke(); }
+                for(let gy = 0; gy < mapHeight; gy += 80) { ctx.beginPath(); ctx.moveTo(0, gy - camY); ctx.lineTo(canvas.width, gy - camY); ctx.stroke(); }
+
+                // Render Grand Avenue Crossway Roads
+                ctx.fillStyle = "#16161a";
+                let roadsList = [1500, 1000, 2000];
+                roadsList.forEach(r => {
+                    ctx.fillRect(0 - camX, r - 15 - camY, mapWidth, 30);
+                    ctx.fillRect(r - 15 - camX, 0 - camY, 30, mapHeight);
+                    // Glowing laser lane street marks lines divider tracks
+                    ctx.strokeStyle = "rgba(0,240,255,0.4)"; ctx.lineWidth = 2; ctx.setLineDash([15, 15]);
+                    ctx.beginPath(); ctx.moveTo(0 - camX, r - camY); ctx.lineTo(mapWidth - camX, r - camY); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(r - camX, 0 - camY); ctx.lineTo(r - camX, mapHeight - camY); ctx.stroke();
+                    ctx.setLineDash([]);
+                });
+
+                // Drawing Active Traffic Lights Node Dots
+                intersections.forEach(inst => {
+                    ctx.fillStyle = inst.state === "NS_GREEN" ? "#3dfc7b" : "#ff007f";
+                    ctx.beginPath(); ctx.arc(inst.x - camX, inst.y - 18 - camY, 6, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = inst.state === "EW_GREEN" ? "#3dfc7b" : "#ff007f";
+                    ctx.beginPath(); ctx.arc(inst.x + 18 - camX, inst.y - camY, 6, 0, Math.PI*2); ctx.fill();
+                });
+
+                // Render Skyscraper Blocks outlines
+                buildings.forEach(b => {
+                    ctx.fillStyle = b.color; ctx.fillRect(b.x - b.w/2 - camX, b.y - b.h/2 - camY, b.w, b.h);
+                    ctx.strokeStyle = b.neonColor; ctx.lineWidth = 2;
+                    ctx.strokeRect(b.x - b.w/2 - camX, b.y - b.h/2 - camY, b.w, b.h);
+                });
+
+                // Render Dispensary Main Hub
+                ctx.fillStyle = "#051f0e"; ctx.strokeStyle = "#00f0ff"; ctx.lineWidth = 3;
+                ctx.fillRect(hqX - hqSize/2 - camX, hqY - hqSize/2 - camY, hqSize, hqSize);
+                ctx.strokeRect(hqX - hqSize/2 - camX, hqY - hqSize/2 - camY, hqSize, hqSize);
+                // Glowing Palm Emblem Core Inside Portal Base
+                ctx.fillStyle = "#ff007f"; ctx.beginPath(); ctx.arc(hqX - camX, hqY + hqSize/2 - camY, 14, 0, Math.PI*2); ctx.fill();
+
+                // Draw Car and Truck assets rigs layouts
+                ctx.save(); ctx.translate(cx - camX, cy - camY); ctx.rotate(ca);
+                ctx.fillStyle = "#ff0055"; ctx.fillRect(-24, -12, 48, 24);
+                ctx.fillStyle = "#00f0ff"; ctx.fillRect(14, -10, 6, 4); ctx.fillRect(14, 6, 6, 4); // Headlights neon rigs indicators
+                ctx.restore();
+
+                ctx.save(); ctx.translate(tx - camX, ty - camY); ctx.rotate(ta);
+                ctx.fillStyle = "#3a414a"; ctx.fillRect(-34, -15, 68, 30);
+                ctx.fillStyle = "#ffff00"; ctx.fillRect(28, -12, 4, 4); ctx.fillRect(28, 8, 4, 4);
+                ctx.restore();
+
+                // Move and render traffic array dots vectors
+                traffic.forEach(car => {
+                    ctx.fillStyle = car.color; ctx.fillRect(car.x - 10 - camX, car.y - 6 - camY, 20, 12);
+                    ctx.shadowColor = car.color; ctx.shadowBlur = 6;
+                });
+                ctx.shadowBlur = 0; // Clear blur layer parameters mapping context
+
+                // Draw Mission Objective Ring Node Coordinates
+                if (activeMission !== "NONE" && missionStage === 1) {
+                    ctx.fillStyle = "rgba(0, 240, 255, 0.25)"; ctx.beginPath(); ctx.arc(missionX - camX, missionY - camY, 40 + Math.sin(loopTimer*0.1)*6, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "#00f0ff"; ctx.beginPath(); ctx.arc(missionX - camX, missionY - camY, 8, 0, Math.PI*2); ctx.fill();
+                }
+
+                // --- 🗺️ RETRO NATIVE MINI-MAP HUD RADAR SYSTEM ---
+                let radarSize = 130, rx = canvas.width - radarSize - 30, ry = 30;
+                ctx.fillStyle = "rgba(10, 5, 25, 0.85)"; ctx.strokeStyle = "#ff007f"; ctx.lineWidth = 3;
+                ctx.fillRect(rx, ry, radarSize, radarSize); ctx.strokeRect(rx, ry, radarSize, radarSize);
+                
+                // Draw minimap player and asset square vector indicators icons
+                let mapToRadar = (gx, gy) => {
+                    return { x: rx + radarSize/2 + (gx - px) * 0.08, y: ry + radarSize/2 + (gy - py) * 0.08 };
+                };
+                // Minimap HQ Indicator Icon
+                let hqRadar = mapToRadar(hqX, hqY);
+                if(hqRadar.x > rx && hqRadar.x < rx+radarSize && hqRadar.y > ry && hqRadar.y < ry+radarSize) {
+                    ctx.fillStyle = "#3dfc7b"; ctx.fillRect(hqRadar.x - 4, hqRadar.y - 4, 8, 8);
+                }
+                // Minimap Sports Car Indicator Icon
+                let carRadar = mapToRadar(cx, cy);
+                if(carRadar.x > rx && carRadar.x < rx+radarSize && carRadar.y > ry && carRadar.y < ry+radarSize) {
+                    ctx.fillStyle = "#ff0055"; ctx.fillRect(carRadar.x - 3, carRadar.y - 3, 6, 6);
+                }
+                // Center Player representation dot icon indicator arrow pointer
+                ctx.fillStyle = "#00f0ff"; ctx.beginPath(); ctx.arc(rx + radarSize/2, ry + radarSize/2, 5, 0, Math.PI*2); ctx.fill();
+            } 
+            else {
+                // Render Dispensary Interior Core layout
+                ctx.fillStyle = "#0a0512"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = "#ff007f"; ctx.lineWidth = 4; ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+                for(let i=0; i<unlocks.grows; i++) {
+                    let bx = 80, by = 100 + (i * 95);
+                    ctx.fillStyle = "#1e0b36"; ctx.fillRect(bx, by, 200, 55);
+                    ctx.fillStyle = "#00f0ff"; ctx.fillRect(bx + 6, by + 12, (plantGrowth[i] / 100) * 188, 32);
+                    ctx.fillStyle = "#fff"; ctx.font = "12px monospace"; ctx.fillText("GROW ROW "+(i+1)+": "+Math.floor(plantGrowth[i])+"%", bx+12, by+32);
+                }
+                for(let i=0; i<unlocks.dispensers; i++) {
+                    let dx = canvas.width - 240, dy = 100 + (i * 120);
+                    ctx.fillStyle = "#0c2b18"; ctx.strokeStyle = "#3dfc7b"; ctx.fillRect(dx, dy, 150, 65); ctx.strokeRect(dx, dy, 150, 65);
+                    ctx.fillStyle = "#fff"; ctx.fillText("NEON DISPENSER", dx + 12, dy + 38);
+                }
+            }
+
+            // Draw player avatar vector shape character representation if not driving
+            if (stateMode !== "Driving") {
+                ctx.save();
+                if(stateMode === "Interior") ctx.translate(px, py); else ctx.translate(px - camX, py - camY);
+                ctx.rotate(pa);
+                ctx.fillStyle = "#00f0ff"; ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI*2); ctx.fill(); // Neon Cyan torso
+                ctx.fillStyle = "#ff007f"; ctx.beginPath(); ctx.arc(7, 0, 6, 0, Math.PI*2); ctx.fill(); // Pink pointer face directional indicator
+                ctx.restore();
+            }
+
+            // Sync text panels fields metrics
+            document.getElementById("hud-cash").innerText = "$" + cash; document.getElementById("hud-biz-bank").innerText = "$" + bizBank;
+            document.getElementById("hud-stock").innerText = stock; document.getElementById("hud-grows").innerText = unlocks.grows;
+            document.getElementById("hud-dispensers").innerText = unlocks.dispensers; document.getElementById("hud-mission").innerText = activeMission;
+            document.getElementById("hud-stars").innerText = stars > 0 ? "★".repeat(stars) : "CLEAR";
+            
+            let hr = Math.floor(timeClock).toString().padStart(2,'0');
+            let mn = Math.floor((timeClock%1)*60).toString().padStart(2,'0');
+            document.getElementById("hud-time").innerText = hr + ":" + mn;
+            document.getElementById("hud-location").innerText = stateMode === "Interior" ? "DISPENSARY INNER HUB" : "MASSIVE MIAMI NEON GRID";
+
+            if (stateMode === "Interior") { prompt.style.display = "block"; prompt.innerText = "A: EXPAND EMPIRE MACHINES | B: HARVEST GROW ROWS"; }
+            else if (stateMode === "Walking" && activeMission === "NONE") { prompt.style.display = "block"; prompt.innerText = "Y: MOUNT VEHICLE | X: ACCEPT DROPOFF CONTRACT"; }
+            else { prompt.style.display = "none"; }
+
+            window.requestAnimationFrame(renderLoopFrame);
+        };
+
+        processLoader();
+    });
+    </script>
+</body>
+</html>
