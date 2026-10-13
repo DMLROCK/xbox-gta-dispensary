@@ -1,0 +1,7 @@
+{
+  "name": "gta-dispensary-xbox",
+  "version": "1.0.0",
+  "main": "index.html",
+  "scripts": { "start": "npx serve --listen 8080 ." },
+  "dependencies": { "serve": "^14.2.4" }
+}
