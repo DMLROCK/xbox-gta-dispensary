@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Stoner Hideout</title>
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #030805; font-family: 'Courier New', monospace; }
+        #gameCanvas { width: 100%; height: 100%; display: none; background: #000; }
+        
+        /* Loader Framework Style */
+        #loadingScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: linear-gradient(135deg, #05140a 0%, #010502 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+        }
+        .load-title { color: #3dfc7b; font-size: 38px; font-weight: bold; text-shadow: 0 0 12px rgba(61,252,123,0.5); margin-bottom: 5px; letter-spacing: 2px; }
+        .load-subtitle { color: #70947a; font-size: 14px; margin-bottom: 40px; }
+        .load-bar-bg { width: 280px; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; border: 2px solid #1ca345; overflow: hidden; }
+        .load-bar-fill { width: 0%; height: 100%; background: #3dfc7b; box-shadow: 0 0 8px #3dfc7b; }
+        .load-status { color: #ffffff; font-size: 11px; margin-top: 15px; text-transform: uppercase; }
+
+        /* HUD overlay */
+        #hud {
+            position: absolute; top: 20px; left: 20px; color: #3dfc7b; font-size: 13px; font-weight: bold;
+            text-shadow: 2px 2px 3px #000; pointer-events: none; background: rgba(3, 12, 6, 0.9); padding: 16px; border-radius: 6px; border: 2px solid #1fa347;
+            display: none; z-index: 10; line-height: 1.4;
+        }
+        .hud-line { margin-bottom: 4px; }
+        #interact-prompt {
+            position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); color: #fff;
+            font-size: 16px; font-weight: bold; text-shadow: 2px 2px 4px #000; background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 15px; 
+            display: none; z-index: 10; border: 1px solid #3dfc7b; letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen Sequence -->
+    <div id="loadingScreen">
+        <div class="load-title">STONER HIDEOUT</div>
+        <div class="load-subtitle">EMPIRE BUILD v4.5 (SECURE EDITION)</div>
+        <div class="load-bar-bg"><div id="loadBar" class="load-bar-fill"></div></div>
+        <div id="loadText" class="load-status">Loading Local Canvas Engine Graphics...</div>
+    </div>
+
+    <!-- Interface HUD Overlay Elements -->
+    <div id="interact-prompt">PRESS A TO INTERACT</div>
+    <div id="hud">
+        <div class="hud-line">💸 WALLET CASH: $<span id="hud-cash">5000</span></div>
+        <div class="hud-line">🏦 BUSINESS BANK: $<span id="hud-biz-bank">15000</span></div>
+        <div class="hud-line">🌿 DISPENSARY STOCK: <span id="hud-stock">100</span> / 500 oz</div>
+        <div class="hud-line">🏪 EMPIRE ASSETS UNLOCKED:</div>
+        <div class="hud-line">&nbsp;&nbsp;• Active Grow Rows: <span id="hud-grows">0</span>/3</div>
+        <div class="hud-line">&nbsp;&nbsp;• Counter Dispensers: <span id="hud-dispensers">0</span>/2</div>
+        <div class="hud-line">🚓 WANTED LEVEL: <span id="hud-stars">CLEAR</span></div>
+        <div class="hud-line">📦 CONTRACT MISSION: <span id="hud-mission">NONE</span></div>
+        <div class="hud-line">⏰ TIME: <span id="hud-time">12:00</span> | <span id="hud-weather">CLEAR</span></div>
+        <div class="hud-line">⚡ MAP SECTOR: <span id="hud-location">CITY GRID</span></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+    // Self-contained high-performance pseudo-3D perspective drawing matrix engine loop
+    window.addEventListener('DOMContentLoaded', () => {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const loadBar = document.getElementById("loadBar");
+        const loadText = document.getElementById("loadText");
+        const loadScreen = document.getElementById("loadingScreen");
+        const hudElement = document.getElementById('hud');
+        const prompt = document.getElementById("interact-prompt");
+
+        // Game Save Engine System
+        const SaveSystem = {
+            save(data) { try { localStorage.setItem("STONER_4_SAVE", JSON.stringify(data)); } catch(e){} },
+            load() { try { let d = localStorage.getItem("STONER_4_SAVE"); return d ? JSON.parse(d) : null; }catch(e){return null;} }
+        };
+
+        // Complete Hardware Level Controller Setup Layer
+        class GamepadInput {
+            constructor() {
+                this.index = null;
+                this.axes = [0, 0];
+                this.buttons = { A:false, B:false, X:false, Y:false, LT:0, RT:0, Menu:false };
+                this.prevButtons = { ...this.buttons };
+                window.addEventListener("gamepadconnected", (e) => { this.index = e.gamepad.index; });
+            }
+            poll() {
+                if (this.index === null) {
+                    let gps = navigator.getGamepads();
+                    for(let i=0; i<gps.length; i++) { if(gps[i]) { this.index = i; break; } }
+                }
+                if (this.index === null) return;
+                let gp = navigator.getGamepads()[this.index];
+                if (!gp) return;
+                this.prevButtons = { ...this.buttons };
+                
+                if(gp.axes && gp.axes.length >= 2) {
+                    this.axes = [Math.abs(gp.axes[0])>0.2 ? gp.axes[0] : 0, Math.abs(gp.axes[1])>0.2 ? gp.axes[1] : 0];
+                }
+                if(gp.buttons && gp.buttons.length >= 10) {
+                    this.buttons = {
+                        A: gp.buttons[0].pressed, B: gp.buttons[1].pressed, X: gp.buttons[2].pressed, Y: gp.buttons[3].pressed,
+                        LT: gp.buttons[6].value, RT: gp.buttons[7].value, Menu: gp.buttons[9].pressed
+                    };
+                }
+            }
+            pressed(b) { return this.buttons[b] && !this.prevButtons[b]; }
+        }
+
+        const input = new GamepadInput();
+
+        // Game Configuration Properties Setup
+        let cash = 5000, bizBank = 15000, stock = 100, stars = 0, timeClock = 12.0;
+        let unlocks = { grows: 0, dispensers: 0 };
+        let stateMode = "Walking"; // Walking, Driving, Interior
+        let activeMission = "NONE", missionStage = 0, missionX = 0, missionY = 0;
+        let loopTimer = 0, plantGrowth = [0, 0, 0];
+
+        // Object Entities Coordinates Map Array Vector Positions
+        let px = 400, py = 500, pa = 0; // Player metrics
+        let cx = 450, cy = 450, ca = 0, cSpeed = 0; // Sports Car metrics
+        let tx = 320, ty = 480, ta = 0, tSpeed = 0; // Truck metrics
+        let hqX = 400, hqY = 250, hqSize = 90; // Headquarters layout vector bounds
+        let activeVehicle = "NONE";
+
+        // Generate procedural static architectural blocks
+        let buildings = [];
+        for(let i=0; i<25; i++) {
+            buildings.push({
+                x: Math.random() * 1200 - 200,
+                y: Math.random() * 1200 - 200,
+                w: 60 + Math.random()*50,
+                h: 60 + Math.random()*50,
+                color: 'rgb('+(35+Math.random()*20)+','+(40+Math.random()*20)+','+(50+Math.random()*20)+')'
+            });
+        }
+
+        let traffic = [];
+        for(let i=0; i<6; i++) { traffic.push({ x: Math.random()*800, y: Math.random()*800, speed: 1.5 + Math.random()*2, heading: Math.random()*Math.PI*2 }); }
+
+        // Start progressive loading engine screen calculations
+        let loadProgress = 0;
+        const loadPhases = ["COMPILING STONER CANVAS DRAWING INTERFACES...", "GENERATING WORLD ENVIRONMENT MAP...", "MOUNTING CONTROLLER LISTENERS...", "COMPILING DISPENSARY HUB HOUSING...", "READY TO ENTER LOS SUEÑOS EMPIRE..."];
+        
+        const processLoader = () => {
+            loadProgress += 2;
+            loadBar.style.width = loadProgress + "%";
+            if (loadProgress % 20 === 0) loadText.innerText = loadPhases[Math.min(4, Math.floor(loadProgress/20))];
+            if (loadProgress < 100) {
+                setTimeout(processLoader, 35);
+            } else {
+                loadScreen.style.display = "none";
+                canvas.style.display = "block";
+                hudElement.style.display = "block";
+                resizeCanvas();
+                let saved = SaveSystem.load();
+                if(saved) { cash=saved.cash; bizBank=saved.bizBank; stock=saved.stock; unlocks=saved.unlocks; }
+                window.requestAnimationFrame(renderLoopFrame);
+            }
+        };
+
+        const resizeCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        window.addEventListener('resize', resizeCanvas);
+
+        // Core Render Engine Calculation Frame Loop Method Block
+        const renderLoopFrame = () => {
+            input.poll();
+            loopTimer++;
+            timeClock = (timeClock + 0.001) % 24;
+
+            // Coordinate Engine Evaluation States Vector Loop Linkage Mapping
+            if (stateMode === "Walking") {
+                px += input.axes[0] * 3.5;
+                py += input.axes[1] * 3.5;
+                if (Math.abs(input.axes[0]) > 0.1 || Math.abs(input.axes[1]) > 0.1) pa = Math.atan2(input.axes[0], input.axes[1]);
+
+                // Check for entry into the internal Dispensary structure
+                if(px > hqX - hqSize/2 && px < hqX + hqSize/2 && py > hqY - hqSize/2 && py < hqY + hqSize/2) {
+                    stateMode = "Interior";
+                    px = 400; py = canvas.height - 80;
+                }
+
+                // Check vehicle mounting entry conditions trigger parameters
+                if (input.pressed("Y")) {
+                    if (Math.hypot(px - cx, py - cy) < 45) { stateMode = "Driving"; activeVehicle = "Sports"; }
+                    else if (Math.hypot(px - tx, py - ty) < 55) { stateMode = "Driving"; activeVehicle = "Truck"; }
+                }
+            }
+            else if (stateMode === "Driving") {
+                if (activeVehicle === "Sports") {
+                    cSpeed += input.buttons.RT * 0.25 - input.buttons.LT * 0.35;
+                    cSpeed *= 0.96; ca += input.axes[0] * 0.045;
+                    cx += Math.cos(ca) * cSpeed; cy += Math.sin(ca) * cSpeed;
+                    px = cx; py = cy;
+                    if(input.pressed("Y")) { stateMode = "Walking"; px = cx - 35; py = cy; cSpeed = 0; }
+                } else {
+                    tSpeed += input.buttons.RT * 0.15 - input.buttons.LT * 0.22;
+                    tSpeed *= 0.94; ta += input.axes[0] * 0.035;
+                    tx += Math.cos(ta) * tSpeed; ty += Math.sin(ta) * tSpeed;
+                    px = tx; py = ty;
+                    if(input.pressed("Y")) { stateMode = "Walking"; px = tx - 45; py = ty; tSpeed = 0; }
+                }
+            }
+            else if (stateMode === "Interior") {
+                px += input.axes[0] * 3.2; py += input.axes[1] * 3.2;
+                if (Math.abs(input.axes[0]) > 0.1 || Math.abs(input.axes[1]) > 0.1) pa = Math.atan2(input.axes[0], input.axes[1]);
+
+                if(py > canvas.height - 40) { stateMode = "Walking"; px = hqX; py = hqY + hqSize/2 + 20; }
+
+                // Plant Grow Matrix calculations
+                for(let i=0; i<unlocks.grows; i++) { if(plantGrowth[i] < 100) plantGrowth[i] += 0.08; }
+                if(loopTimer % 180 === 0 && unlocks.dispensers > 0 && stock > 0) { stock = Math.max(0, stock - unlocks.dispensers); bizBank += unlocks.dispensers * 90; }
+
+                if(input.pressed("A")) {
+                    if (unlocks.grows < 3 && bizBank >= 2000) { bizBank -= 2000; unlocks.grows++; }
+                    else if (unlocks.dispensers < 2 && bizBank >= 4000) { bizBank -= 4000; unlocks.dispensers++; }
+                }
+                if(input.pressed("B")) {
+                    for(let i=0; i<unlocks.grows; i++) { if(plantGrowth[i] >= 80) { plantGrowth[i] = 0; stock = Math.min(500, stock + 40); } }
+                }
+            }
+
+            // Open World Mission Core loop engine lines
+            if(stateMode === "Walking" && activeMission === "NONE" && input.pressed("X")) {
+                activeMission = "SMUGGLE RUN"; missionStage = 1; missionX = Math.random()*canvas.width; missionY = Math.random()*canvas.height;
+            }
+            if(activeMission !== "NONE") {
+                let currentTargetDist = Math.hypot(px - missionX, py - missionY);
+                if(currentTargetDist < 40) {
+                    if(missionStage === 1) { missionStage = 2; missionX = hqX; missionY = hqY + 20; }
+                    else { bizBank += 4500; stock = Math.min(500, stock + 100); activeMission = "NONE"; }
+                }
+            }
+
+            if(input.pressed("Menu")) SaveSystem.save({ cash, bizBank, stock, unlocks });
+
+            // --- CANVAS DRAW RENDERING VISUAL ELEMENTS LAYER ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (stateMode !== "Interior") {
+                // Render Open World City Sector Environment Layout
+                ctx.fillStyle = (timeClock >= 6 && timeClock < 18) ? "#143a1c" : "#081a0d"; // Grass land backdrop parameters
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Drawing City Streets Asphalt Lines
+                ctx.fillStyle = "#22252a";
+                ctx.fillRect(0, 180, canvas.width, 40);
+                ctx.fillRect(380, 0, 40, canvas.height);
+
+                // Draw buildings geometry shadows block
+                buildings.forEach(b => { ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h); });
+
+                // Render Dispensary Headquarters Exterior
+                ctx.fillStyle = "#0c471a"; ctx.strokeStyle = "#3dfc7b"; ctx.lineWidth = 3;
+                ctx.fillRect(hqX - hqSize/2, hqY - hqSize/2, hqSize, hqSize);
+                ctx.strokeRect(hqX - hqSize/2, hqY - hqSize/2, hqSize, hqSize);
+
+                // Door entrance portal glow ring
+                ctx.fillStyle = "#3dfc7b"; ctx.beginPath(); ctx.arc(hqX, hqY + hqSize/2, 10, 0, Math.PI*2); ctx.fill();
+
+                // Draw Vehicles Assets
+                ctx.save(); ctx.translate(cx, cy); ctx.rotate(ca); ctx.fillStyle = "#e60000"; ctx.fillRect(-22, -11, 44, 22); ctx.restore();
+                ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta); ctx.fillStyle = "#555d6b"; ctx.fillRect(-30, -14, 60, 28); ctx.restore();
+
+                // Move Traffic Vector Arrays
+                traffic.forEach(car => {
+                    car.x += Math.cos(car.heading) * car.speed; car.y += Math.sin(car.heading) * car.speed;
+                    if(car.x < 0 || car.x > canvas.width || car.y < 0 || car.y > canvas.height) { car.heading += Math.PI; }
+                    ctx.fillStyle = "#8d99ae"; ctx.fillRect(car.x - 10, car.y - 6, 20, 12);
+                });
+
+                // Rendering Open-World Mission Marker Node Entity
+                if (activeMission !== "NONE" && missionStage === 1) {
+                    ctx.fillStyle = "rgba(230, 20, 20, 0.4)"; ctx.beginPath(); ctx.arc(missionX, missionY, 30 + Math.sin(loopTimer*0.15)*5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#ff2222"; ctx.beginPath(); ctx.arc(missionX, missionY, 6, 0, Math.PI*2); ctx.fill();
+                }
+            }
+            else {
+                // Render Dispensary Store Hub Interior Scenery Layout Grid Frame
+                ctx.fillStyle = "#0d1711"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = "#1fa347"; ctx.lineWidth = 4; ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+                // Greenhouse Infrastructure Crops Rows Rendering Layout
+                for(let i=0; i<unlocks.grows; i++) {
+                    let rx = 80, ry = 100 + (i * 90);
+                    ctx.fillStyle = "#261c14"; ctx.fillRect(rx, ry, 180, 50);
+                    ctx.fillStyle = "#3dfc7b";
+                    ctx.fillRect(rx + 5, ry + 10, (plantGrowth[i] / 100) * 170, 30);
+                    ctx.fillStyle = "#ffffff"; ctx.font = "11px Courier New"; ctx.fillText("GROW ROW "+(i+1)+": "+Math.floor(plantGrowth[i])+"%", rx+10, ry+28);
+                }
+
+                // Vending Counters Setup Layout Box
+                for(let i=0; i<unlocks.dispensers; i++) {
+                    let dx = canvas.width - 220, dy = 100 + (i * 110);
+                    ctx.fillStyle = "#1b3d27"; ctx.strokeStyle = "#3dfc7b"; ctx.fillRect(dx, dy, 140, 60); ctx.strokeRect(dx, dy, 140, 60);
+                    ctx.fillStyle = "#fff"; ctx.fillText("SMART DISPENSER", dx + 10, dy + 34);
+                }
+            }
+
+            // Draw real custom structured character representation avatar
+            if (stateMode !== "Driving") {
+                ctx.save(); ctx.translate(px, py); ctx.rotate(pa);
+                ctx.fillStyle = "#1e62c4"; ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI*2); ctx.fill(); // Torso element
+                ctx.fillStyle = "#f5cab3"; ctx.beginPath(); ctx.arc(6, 0, 6, 0, Math.PI*2); ctx.fill(); // Head direction orientation pointer element
+                ctx.restore();
+            }
+
+            // Synchronize HUD overlay screen panels elements values parameters
+            document.getElementById("hud-cash").innerText = cash; document.getElementById("hud-biz-bank").innerText = bizBank;
+            document.getElementById("hud-stock").innerText = stock; document.getElementById("hud-grows").innerText = unlocks.grows;
+            document.getElementById("hud-dispensers").innerText = unlocks.dispensers; document.getElementById("hud-mission").innerText = activeMission;
+            document.getElementById("hud-stars").innerText = stars > 0 ? "★".repeat(stars) : "CLEAR";
+
+            let hr = Math.floor(timeClock).toString().padStart(2,'0');
+            let mn = Math.floor((timeClock%1)*60).toString().padStart(2,'0');
+            document.getElementById("hud-time").innerText = hr + ":" + mn;
+            document.getElementById("hud-location").innerText = stateMode;
+
+            if (stateMode === "Interior") { prompt.style.display = "block"; prompt.innerText = "A: EXPAND EMPIRE MACHINES | B: HARVEST FULL BUDS"; }
+            else if (stateMode === "Walking" && activeMission === "NONE") { prompt.style.display = "block"; prompt.innerText = "Y: ENTER VEHICLE | X: DEPLOY SMUGGLE MISSION"; }
+            else { prompt.style.display = "none"; }
+
+            window.requestAnimationFrame(renderLoopFrame);
+        };
+
+        // Initiate sequence flow execution blueprint loop tracker parameters
+        processLoader();
+    });
+    </script>
+</body>
+</html>
