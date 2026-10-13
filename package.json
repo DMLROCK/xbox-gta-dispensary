@@ -1,7 +1,16 @@
 {
-  "name": "gta-dispensary-xbox",
-  "version": "1.0.0",
+  "name": "gta-stoner-hideout-3d",
+  "version": "1.2.0",
+  "description": "Grand Theft Auto & Dispensary Empire Hybrid 3D Sandbox Engine for Xbox Edge",
   "main": "index.html",
-  "scripts": { "start": "npx serve --listen 8080 ." },
-  "dependencies": { "serve": "^14.2.4" }
+  "scripts": {
+    "start": "npx serve --listen 8080 ."
+  },
+  "dependencies": {
+    "serve": "^14.2.4"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "private": true
 }
