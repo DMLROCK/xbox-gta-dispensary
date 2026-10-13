@@ -174,8 +174,7 @@
             sunLight = new BABYLON.DirectionalLight("Sun", new BABYLON.Vector3(-0.5, -1, -0.3), scene); sunLight.position = new BABYLON.Vector3(50, 120, 50); sunLight.intensity = 1.8;
             const ambient = new BABYLON.HemisphericLight("Amb", new BABYLON.Vector3(0, 1, 0), scene); ambient.intensity = 0.6;
 
-            // Skybox layer
-skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, scene);
+            // Skybox layerskybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, scene);
 skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
 skyboxMaterial.backFaceCulling = false;
 skyboxMaterial.disableLighting = true;
@@ -369,3 +368,4 @@ document.head.appendChild(scriptInjector);
 } else {
 runGameEngineBootstrap();
 }
+
