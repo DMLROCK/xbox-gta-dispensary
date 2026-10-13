@@ -3,54 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>GTS: Stoner Valley - 3D Engine Build</title>
+    <title>Stoner Hideout</title>
     <style>
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050b14; }
-        #renderCanvas { width: 100%; height: 100%; touch-action: none; display: block; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #020503; font-family: 'Courier New', monospace; }
+        #renderCanvas { width: 100%; height: 100%; touch-action: none; display: none; }
+        
+        /* Loading Screen UI Styles */
+        #loadingScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: linear-gradient(135deg, #0b1d12 0%, #040a06 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+        }
+        .load-title { color: #3dfc7b; font-size: 42px; font-weight: bold; text-shadow: 0 0 15px rgba(61,252,123,0.6); margin-bottom: 5px; letter-spacing: 3px; }
+        .load-subtitle { color: #81a38b; font-size: 16px; margin-bottom: 40px; }
+        .load-bar-bg { width: 300px; height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; border: 2px solid #1fa347; overflow: hidden; }
+        .load-bar-fill { width: 0%; height: 100%; background: #3dfc7b; box-shadow: 0 0 10px #3dfc7b; transition: width 0.1s linear; }
+        .load-status { color: #ffffff; font-size: 12px; margin-top: 15px; }
+
+        /* Gameplay UI Styles */
         #hud {
-            position: absolute; top: 20px; left: 20px; color: #3dfc7b; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold;
-            text-shadow: 2px 2px 4px #000; pointer-events: none; background: rgba(10, 25, 15, 0.9); padding: 18px; border-radius: 8px; border: 2px solid #1fa347;
-            z-index: 10;
+            position: absolute; top: 20px; left: 20px; color: #3dfc7b; font-size: 14px; font-weight: bold;
+            text-shadow: 2px 2px 4px #000; pointer-events: none; background: rgba(5, 18, 10, 0.85); padding: 18px; border-radius: 8px; border: 2px solid #1fa347;
+            display: none; z-index: 10;
         }
         .hud-line { margin-bottom: 5px; }
         #interact-prompt {
-            position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%); color: #fff; font-family: Arial, sans-serif;
-            font-size: 18px; font-weight: bold; text-shadow: 2px 2px 4px #000; background: rgba(0,0,0,0.8); padding: 12px 24px; border-radius: 20px; display: none;
-            z-index: 10;
+            position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%); color: #fff;
+            font-size: 18px; font-weight: bold; text-shadow: 2px 2px 4px #000; background: rgba(0,0,0,0.85); padding: 12px 24px; border-radius: 20px; 
+            display: none; z-index: 10; border: 1px solid #3dfc7b;
         }
     </style>
-    <!-- Fixed Production CDN Script Links for Xbox Edge Compatibility -->
-    <script src="https://unpkg.com"></script>
+    <!-- Combined stable script bundles directly inside head element to prevent script sync failures -->
+    <script src="https://babylonjs.com"></script>
 </head>
 <body>
-    <div id="interact-prompt">A: INTERACT | B: HARVEST</div>
+    <!-- GTA Style Load Up Overlay System Screen -->
+    <div id="loadingScreen">
+        <div class="load-title">STONER HIDEOUT</div>
+        <div class="load-subtitle">LOS SUEÑOS EMPIRE BUILD v2.0</div>
+        <div class="load-bar-bg"><div id="loadBar" class="load-bar-fill"></div></div>
+        <div id="loadText" class="load-status">INITIALIZING SOUNDSTAGE ENGINE VECTORS...</div>
+    </div>
+
+    <!-- Active Gameplay HUD UI HUD Metrics -->
+    <div id="interact-prompt">PRESS A TO INTERACT</div>
     <div id="hud">
         <div class="hud-line">💸 WALLET CASH: $<span id="hud-cash">5000</span></div>
         <div class="hud-line">🏦 BUSINESS BANK: $<span id="hud-biz-bank">15000</span></div>
-        <div class="hud-line">🌿 RAW STOCK: <span id="hud-stock">100</span> / 500 oz</div>
-        <div class="hud-line">🏪 DISPENSARY UPGRADES:</div>
-        <div class="hud-line">&nbsp;&nbsp;• Grow Rows Active: <span id="hud-grows">0</span>/3</div>
-        <div class="hud-line">&nbsp;&nbsp;• Automated Dispensers: <span id="hud-dispensers">0</span>/2</div>
+        <div class="hud-line">🌿 DISPENSARY STOCK: <span id="hud-stock">100</span> / 500 oz</div>
+        <div class="hud-line">🏪 EMPIRE ASSETS UNLOCKED:</div>
+        <div class="hud-line">&nbsp;&nbsp;• Active Grow Rows: <span id="hud-grows">0</span>/3</div>
+        <div class="hud-line">&nbsp;&nbsp;• Counter Dispensers: <span id="hud-dispensers">0</span>/2</div>
         <div class="hud-line">🚓 WANTED LEVEL: <span id="hud-stars">CLEAR</span></div>
-        <div class="hud-line">📦 MISSION: <span id="hud-mission">NONE</span></div>
-        <div class="hud-line">⏰ TIME: <span id="hud-time">08:00</span> | <span id="hud-weather">CLEAR</span></div>
-        <div class="hud-line">⚡ FPS: <span id="hud-fps">0</span></div>
+        <div class="hud-line">📦 CONTRACT MISSION: <span id="hud-mission">NONE</span></div>
+        <div class="hud-line">⏰ TIME: <span id="hud-time">12:00</span> | <span id="hud-weather">CLEAR</span></div>
+        <div class="hud-line">⚡ ENGINE PERFORMANCE: <span id="hud-fps">0</span> FPS</div>
     </div>
+
     <canvas id="renderCanvas"></canvas>
 
     <script>
+    // --- Fail-safe Local Save State Storage ---
     class SaveSystem {
         static save(data) {
-            try { localStorage.setItem("GTS_WORLD_SAVE_DATA", JSON.stringify(data)); } catch (e) {}
+            try { localStorage.setItem("STONER_HIDEOUT_SAVE_STATE", JSON.stringify(data)); } catch (e) {}
         }
         static load() {
-            try { const d = localStorage.getItem("GTS_WORLD_SAVE_DATA"); return d ? JSON.parse(d) : null; } catch(e) { return null; }
+            try { const d = localStorage.getItem("STONER_HIDEOUT_SAVE_STATE"); return d ? JSON.parse(d) : null; } catch(e) { return null; }
         }
     }
 
+    // --- Hardened Xbox Controller Native Input Layout ---
     class XboxInput {
         constructor() {
-            this.gamepadIndex = null; this.deadzone = 0.20; this.axes =;
+            this.gamepadIndex = null; this.deadzone = 0.22; 
+            this.axes =;
             this.buttons = { A: false, B: false, X: false, Y: false, LT: 0, RT: 0, Menu: false };
             this.prevButtons = { ...this.buttons };
             window.addEventListener("gamepadconnected", (e) => { this.gamepadIndex = e.gamepad.index; });
@@ -79,18 +106,19 @@
         wasButtonPressed(b) { return this.buttons[b] && !this.prevButtons[b]; }
     }
 
+    // --- GTA Style Dynamic Vehicle Physics Configuration Layer ---
     class VehicleController {
         constructor(mesh, type = "Sports") {
             this.mesh = mesh; this.type = type; this.velocity = BABYLON.Vector3.Zero(); this.speed = 0; this.heading = 0;
-            this.maxSpeed = type === "Truck" ? 0.50 : 0.95;
-            this.acceleration = type === "Truck" ? 0.009 : 0.026;
-            this.deceleration = 0.006; this.brakingForce = 0.045; this.steeringSpeed = 0.048; this.driftFactor = type === "Truck" ? 0.98 : 0.91;
+            this.maxSpeed = type === "Truck" ? 0.45 : 0.88;
+            this.acceleration = type === "Truck" ? 0.008 : 0.024;
+            this.deceleration = 0.006; this.brakingForce = 0.045; this.steeringSpeed = 0.046; this.driftFactor = type === "Truck" ? 0.98 : 0.92;
         }
         update(throttle, brake, steerX, isRainy) {
-            const drift = Math.min(0.99, this.driftFactor + (isRainy ? 0.05 : 0));
+            const drift = Math.min(0.99, this.driftFactor + (isRainy ? 0.04 : 0));
             if (Math.abs(this.speed) > 0.03) { this.heading += steerX * this.steeringSpeed * (this.speed > 0 ? 1 : -1); this.mesh.rotation.y = this.heading; }
             if (throttle > 0.05) this.speed = Math.min(this.maxSpeed, this.speed + (throttle * this.acceleration));
-            else if (brake > 0.05) this.speed = Math.max(-this.maxSpeed * 0.3, this.speed - (brake * this.brakingForce));
+            else if (brake > 0.05) this.speed = Math.max(-this.maxSpeed * 0.25, this.speed - (brake * this.brakingForce));
             else { if (this.speed > 0) this.speed = Math.max(0, this.speed - this.deceleration); if (this.speed < 0) this.speed = Math.min(0, this.speed + this.deceleration); }
             this.velocity = BABYLON.Vector3.Lerp(this.velocity, new BABYLON.Vector3(Math.sin(this.heading) * this.speed, 0, Math.cos(this.heading) * this.speed), drift);
             this.mesh.position.addInPlace(this.velocity);
@@ -98,7 +126,39 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-        const canvas = document.getElementById('renderCanvas'); const engine = new BABYLON.Engine(canvas, true);
+        // --- GTA Mock Up Progressive Loading Engine Pipeline Loop ---
+        const loadBar = document.getElementById("loadBar");
+        const loadText = document.getElementById("loadText");
+        const loadScreen = document.getElementById("loadingScreen");
+        const canvas = document.getElementById('renderCanvas');
+        const hudElement = document.getElementById('hud');
+
+        let loadPercent = 0;
+        const loadPhases = [
+            "STREAMING 3D SKYLINE TEXTURE MATRICES...",
+            "GENERATING OPEN-WORLD VEHICLE RIGS...",
+            "RENDERING INTERIOR DISPENSARY HUB...",
+            "ESTABLISHING XBOX CONTROLLER CHANNELS...",
+            "SYNCHRONIZING SAVE DATA STATE..."
+        ];
+
+        const runLoader = () => {
+            loadPercent += 2;
+            loadBar.style.width = loadPercent + "%";
+            if (loadPercent % 20 === 0) {
+                loadText.innerText = loadPhases[Math.floor(loadPercent / 21)];
+            }
+            if (loadPercent < 100) {
+                setTimeout(runLoader, 50);
+            } else {
+                loadScreen.style.display = "none";
+                canvas.style.display = "block";
+                hudElement.style.display = "block";
+                engine.resize();
+            }
+        };
+
+        const engine = new BABYLON.Engine(canvas, true);
         let scene, camera, sunLight, skybox, skyboxMaterial, input = new XboxInput(), activeVehicle;
         let playerMesh, playerBody, playerHead, sportsCarMesh, deliveryTruckMesh, stateMode = "Walking", timeOfDayClock = 12.0;
         let currentWeather = "CLEAR", rainParticles = null, activeMission = "NONE", missionStage = 0, missionMarker = null;
@@ -106,7 +166,7 @@
         
         let unlocks = { grows: 0, dispensers: 0 };
         let plantGrowth = [0.0, 0.0, 0.0]; let businessProcessingTimer = 0; let structures = [];
-        const nodes = [new BABYLON.Vector3(-150,0,-150), new BABYLON.Vector3(150,0,150), new BABYLON.Vector3(0,0,90)];
+        const nodes = [new BABYLON.Vector3(-160,0,-160), new BABYLON.Vector3(160,0,160), new BABYLON.Vector3(0,0,85)];
         let trafficCars = [], copCars = [];
 
         const initGame = () => {
@@ -114,174 +174,171 @@
             camera = new BABYLON.UniversalCamera("Cam", new BABYLON.Vector3(0, 18, -14), scene); camera.setTarget(BABYLON.Vector3.Zero());
             
             sunLight = new BABYLON.DirectionalLight("Sun", new BABYLON.Vector3(-0.5, -1, -0.3), scene); sunLight.position = new BABYLON.Vector3(50, 120, 50); sunLight.intensity = 1.8;
-            const ambient = new BABYLON.HemisphericLight("Amb", new BABYLON.Vector3(0, 1, 0), scene); ambient.intensity = 0.6;
-
-            // --- REAL SKYBOX LAYER ---
-            skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, scene);
-            skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
-            skyboxMaterial.backFaceCulling = false;
-            skyboxMaterial.disableLighting = true;
-            skybox.material = skyboxMaterial;
-            skybox.infiniteDistance = true;
-
-            // --- WORLD LANDSCAPE GROUND & ROADS ---
-            const ground = BABYLON.MeshBuilder.CreateGround("Floor", { width: 800, height: 800 }, scene);
-            const grassMat = new BABYLON.StandardMaterial("grassMat", scene);
-            grassMat.diffuseColor = new BABYLON.Color3(0.12, 0.35, 0.15);
-            ground.material = grassMat; ground.receiveShadows = true;
-
-            const mainStreetX = BABYLON.MeshBuilder.CreateGround("StreetX", { width: 800, height: 16 }, scene);
-            mainStreetX.position.y = 0.01;
-            const roadMat = new BABYLON.StandardMaterial("roadMat", scene);
-            roadMat.diffuseColor = new BABYLON.Color3(0.15, 0.15, 0.18);
-            mainStreetX.material = roadMat; mainStreetX.receiveShadows = true;
-
-            const mainStreetZ = BABYLON.MeshBuilder.CreateGround("StreetZ", { width: 16, height: 800 }, scene);
-            mainStreetZ.position.y = 0.01; mainStreetZ.material = roadMat; mainStreetZ.receiveShadows = true;
-
-            // --- 3D SKYLINE BUILDINGS ---
-            for (let x = -250; x <= 250; x += 90) {
-                for (let z = -250; z <= 250; z += 90) {
-                    if (Math.abs(x) < 50 && Math.abs(z) < 50) continue;
-                    const h = 30 + Math.random() * 45;
-                    const b = BABYLON.MeshBuilder.CreateBox("Bld", { width: 32, depth: 32, height: h }, scene); b.position = new BABYLON.Vector3(x, h / 2, z);
-                    const bMat = new BABYLON.StandardMaterial("bMat", scene);
-                    bMat.diffuseColor = new BABYLON.Color3(0.25, 0.28, 0.35);
-                    b.material = bMat;
-                }
-            }
-
-            // HQ Building Block
-            const hq = BABYLON.MeshBuilder.CreateBox("HQ", { width: 38, depth: 38, height: 10 }, scene); hq.position = new BABYLON.Vector3(0, 5, 0);
-            const hqMat = new BABYLON.StandardMaterial("hqMat", scene); hqMat.diffuseColor = new BABYLON.Color3(0.05, 0.25, 0.12); hq.material = hqMat;
-            
-            const entranceGlow = BABYLON.MeshBuilder.CreateCylinder("Portal", { diameter: 4.5, height: 0.15 }, scene); entranceGlow.position = new BABYLON.Vector3(0, 0.08, -19.2);
-            const entranceMat = new BABYLON.StandardMaterial("eMat", scene); entranceMat.emissiveColor = new BABYLON.Color3(0.0, 1.0, 0.4); entranceGlow.material = entranceMat;
-
-            // --- PLAYER CHARACTER AVATAR ---
-            playerMesh = new BABYLON.Mesh("PlayerRoot", scene);
-playerMesh.position = new BABYLON.Vector3(0, 0, -24);
+const ambient = new BABYLON.HemisphericLight("Amb", new BABYLON.Vector3(0, 1, 0), scene); ambient.intensity = 0.6;
+// --- GTA SKYBOX ENVIRONMENT LAYER ---
+skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, scene);
+skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
+skyboxMaterial.backFaceCulling = false;
+skyboxMaterial.disableLighting = true;
+skybox.material = skyboxMaterial;
+skybox.infiniteDistance = true;
+// --- SOLID WORLD GROUND GRASS INTERFACE ---
+const ground = BABYLON.MeshBuilder.CreateGround("Floor", { width: 850, height: 850 }, scene);
+const grassMat = new BABYLON.StandardMaterial("grassMat", scene);
+grassMat.diffuseColor = new BABYLON.Color3(0.11, 0.32, 0.14);
+ground.material = grassMat; ground.receiveShadows = true;
+// Structural Crossroads Road Networks
+const mainStreetX = BABYLON.MeshBuilder.CreateGround("StreetX", { width: 850, height: 18 }, scene);
+mainStreetX.position.y = 0.01;
+const roadMat = new BABYLON.StandardMaterial("roadMat", scene);
+roadMat.diffuseColor = new BABYLON.Color3(0.14, 0.14, 0.16);
+mainStreetX.material = roadMat; mainStreetX.receiveShadows = true;
+const mainStreetZ = BABYLON.MeshBuilder.CreateGround("StreetZ", { width: 18, height: 850 }, scene);
+mainStreetZ.position.y = 0.01; mainStreetZ.material = roadMat; mainStreetZ.receiveShadows = true;
+// --- 3D OPEN CITY BUILDINGS ---
+for (let x = -260; x <= 260; x += 85) {
+for (let z = -260; z <= 260; z += 85) {
+if (Math.abs(x) < 55 && Math.abs(z) < 55) continue;
+const h = 28 + Math.random() * 40;
+const b = BABYLON.MeshBuilder.CreateBox("Bld", { width: 34, depth: 34, height: h }, scene); b.position = new BABYLON.Vector3(x, h / 2, z);
+const bMat = new BABYLON.StandardMaterial("bMat", scene);
+bMat.diffuseColor = new BABYLON.Color3(0.22, 0.26, 0.32);
+b.material = bMat;
+}
+}
+// Upgraded Dispensary Headquarters Interior/Exterior Entity
+const hq = BABYLON.MeshBuilder.CreateBox("HQ", { width: 40, depth: 40, height: 11 }, scene); hq.position = new BABYLON.Vector3(0, 5.5, 0);
+const hqMat = new BABYLON.StandardMaterial("hqMat", scene); hqMat.diffuseColor = new BABYLON.Color3(0.04, 0.22, 0.10); hq.material = hqMat;
+const entranceGlow = BABYLON.MeshBuilder.CreateCylinder("Portal", { diameter: 5.0, height: 0.15 }, scene); entranceGlow.position = new BABYLON.Vector3(0, 0.08, -20.2);
+const entranceMat = new BABYLON.StandardMaterial("eMat", scene); entranceMat.emissiveColor = new BABYLON.Color3(0.0, 0.9, 0.3); entranceGlow.material = entranceMat;
+// --- REAL 3D CHARACTER AVATAR ENTITY ---
+playerMesh = new BABYLON.Mesh("PlayerRoot", scene);
+playerMesh.position = new BABYLON.Vector3(0, 0, -25);
 playerBody = BABYLON.MeshBuilder.CreateCylinder("PlayerBody", { diameter: 1.4, height: 2.2 }, scene);
 playerBody.position.y = 1.1; playerBody.parent = playerMesh;
-const bodyMat = new BABYLON.StandardMaterial("bMat", scene); bodyMat.diffuseColor = new BABYLON.Color3(0.1, 0.5, 0.9); playerBody.material = bodyMat;
+const bodyMat = new BABYLON.StandardMaterial("bMat", scene); bodyMat.diffuseColor = new BABYLON.Color3(0.1, 0.48, 0.85); playerBody.material = bodyMat;
 playerHead = BABYLON.MeshBuilder.CreateSphere("PlayerHead", { diameter: 1.1 }, scene);
-playerHead.position.y = 2.5; playerHead.parent = playerMesh;
-const headMat = new BABYLON.StandardMaterial("hMat", scene); headMat.diffuseColor = new BABYLON.Color3(0.95, 0.75, 0.6); playerHead.material = headMat;
-// --- VEHICLES ---
-sportsCarMesh = BABYLON.MeshBuilder.CreateBox("SportsCar", { width: 2.4, depth: 4.8, height: 1.3 }, scene); sportsCarMesh.position = new BABYLON.Vector3(12, 0.65, -24);
-const scMat = new BABYLON.StandardMaterial("scMat", scene); scMat.diffuseColor = new BABYLON.Color3(0.9, 0.05, 0.05); sportsCarMesh.material = scMat;
-deliveryTruckMesh = BABYLON.MeshBuilder.CreateBox("TruckMesh", { width: 3.0, depth: 7.0, height: 2.8 }, scene); deliveryTruckMesh.position = new BABYLON.Vector3(-14, 1.4, -26);
-const tMat = new BABYLON.StandardMaterial("tMat", scene); tMat.diffuseColor = new BABYLON.Color3(0.4, 0.45, 0.42); deliveryTruckMesh.material = tMat;
+playerHead.position.y = 2.4; playerHead.parent = playerMesh;
+const headMat = new BABYLON.StandardMaterial("hMat", scene); headMat.diffuseColor = new BABYLON.Color3(0.92, 0.72, 0.58); playerHead.material = headMat;
+// --- CITY DRIVABLE CAR RIGS ---
+sportsCarMesh = BABYLON.MeshBuilder.CreateBox("SportsCar", { width: 2.5, depth: 5.0, height: 1.4 }, scene); sportsCarMesh.position = new BABYLON.Vector3(12, 0.7, -25);
+const scMat = new BABYLON.StandardMaterial("scMat", scene); scMat.diffuseColor = new BABYLON.Color3(0.85, 0.06, 0.06); sportsCarMesh.material = scMat;
+deliveryTruckMesh = BABYLON.MeshBuilder.CreateBox("TruckMesh", { width: 3.2, depth: 7.2, height: 2.9 }, scene); deliveryTruckMesh.position = new BABYLON.Vector3(-14, 1.45, -27);
+const tMat = new BABYLON.StandardMaterial("tMat", scene); tMat.diffuseColor = new BABYLON.Color3(0.38, 0.42, 0.40); deliveryTruckMesh.material = tMat;
 activeVehicle = new VehicleController(sportsCarMesh, "Sports");
-// Traffic & Cops
+// Civilians and Cops Vector Spawns
 for(let i=0; i<6; i++) {
-let car = BABYLON.MeshBuilder.CreateBox("CivCar", {width:2.2, depth:4.4, height:1.4}, scene); car.position = new BABYLON.Vector3(Math.random()*300-150, 0.7, Math.random()*300-150);
-let cMat = new BABYLON.StandardMaterial("c", scene); cMat.diffuseColor = new BABYLON.Color3(0.3,0.3,0.3); car.material = cMat; trafficCars.push(car);
+let car = BABYLON.MeshBuilder.CreateBox("CivCar", {width:2.3, depth:4.6, height:1.4}, scene); car.position = new BABYLON.Vector3(Math.random()*400-200, 0.7, Math.random()*400-200);
+let cMat = new BABYLON.StandardMaterial("c", scene); cMat.diffuseColor = new BABYLON.Color3(0.4,0.4,0.4); car.material = cMat; trafficCars.push(car);
 }
 for(let i=0; i<3; i++) {
-let cop = BABYLON.MeshBuilder.CreateBox("CopCar", {width:2.4, depth:4.8, height:1.6}, scene); cop.position = new BABYLON.Vector3(300, 0.8, 300); cop.setEnabled(false);
-let copMat = new BABYLON.StandardMaterial("cop", scene); copMat.diffuseColor = new BABYLON.Color3(0.05,0.05,0.1); cop.material = copMat; copCars.push({mesh:cop, active:false});
+let cop = BABYLON.MeshBuilder.CreateBox("CopCar", {width:2.5, depth:5.0, height:1.6}, scene); cop.position = new BABYLON.Vector3(350, 0.8, 350); cop.setEnabled(false);
+let copMat = new BABYLON.StandardMaterial("cop", scene); copMat.diffuseColor = new BABYLON.Color3(0.04,0.04,0.08); cop.material = copMat; copCars.push({mesh:cop, active:false});
 }
-// Weather Systems
+// Environmental Weather Array System
 rainParticles = new BABYLON.ParticleSystem("Rain", 80, scene);
 rainParticles.emitter = new BABYLON.Vector3(0, 25, 0); rainParticles.minEmitBox = new BABYLON.Vector3(-25, 0, -25); rainParticles.maxEmitBox = new BABYLON.Vector3(25, 0, 25);
-rainParticles.color1 = new BABYLON.Color4(0.5, 0.7, 1.0, 0.3); rainParticles.gravity = new BABYLON.Vector3(0, -18, 0); rainParticles.emitRate = 0; rainParticles.start();
+rainParticles.color1 = new BABYLON.Color4(0.4, 0.6, 0.9, 0.3); rainParticles.gravity = new BABYLON.Vector3(0, -18, 0); rainParticles.emitRate = 0; rainParticles.start();
+// Load Existing Game Progression File
 const saved = SaveSystem.load();
 if (saved) {
 cash = saved.cash || 5000; bizBank = saved.bizBank || 15000; stock = saved.stock || 100;
 unlocks = saved.unlocks || { grows: 0, dispensers: 0 };
-rebuildDispensaryInterior();
 }
+runLoader();
 };
-const isInsideHQ = (pos) => { return (pos.x >= -19 && pos.x <= 19 && pos.z >= -19 && pos.z <= 19); };
+const isInsideHQ = (pos) => { return (pos.x >= -20 && pos.x <= 20 && pos.z >= -20 && pos.z <= 20); };
+// --- DISPENSARY INTERIOR GEOMETRY BLUEPRINT ---
 const rebuildDispensaryInterior = () => {
 structures.forEach(s => s.dispose()); structures = [];
 if (stateMode !== "Interior") return;
-// Grow House Setup Inside HQ
+// Render Grow Rows System Inside Hub
 for (let i = 0; i < unlocks.grows; i++) {
-let growBox = BABYLON.MeshBuilder.CreateBox("GrowRow_"+i, {width: 12, depth: 3, height: 0.5}, scene);
-growBox.position = new BABYLON.Vector3(-10, 0.25, 10 - (i * 6));
-let gMat = new BABYLON.StandardMaterial("gMat"+i, scene); gMat.diffuseColor = new BABYLON.Color3(0.2, 0.3, 0.2); growBox.material = gMat;
+let growBox = BABYLON.MeshBuilder.CreateBox("GrowRow_"+i, {width: 14, depth: 3.5, height: 0.5}, scene);
+growBox.position = new BABYLON.Vector3(-10, 0.25, 10 - (i * 6.5));
+let gMat = new BABYLON.StandardMaterial("gMat"+i, scene); gMat.diffuseColor = new BABYLON.Color3(0.18, 0.28, 0.18); growBox.material = gMat;
 structures.push(growBox);
-let p = BABYLON.MeshBuilder.CreateCylinder("PlantBud_"+i, {diameterTop: 0.9, diameterBottom: 0.3, height: Math.max(0.1, plantGrowth[i] * 2.5)}, scene);
-p.position = new BABYLON.Vector3(-10, (plantGrowth[i] * 1.25) + 0.25, 10 - (i * 6));
+// Growing Weed Plant Vectors
+let p = BABYLON.MeshBuilder.CreateCylinder("PlantBud_"+i, {diameterTop: 0.9, diameterBottom: 0.3, height: Math.max(0.1, plantGrowth[i] * 2.6)}, scene);
+p.position = new BABYLON.Vector3(-10, (plantGrowth[i] * 1.3) + 0.25, 10 - (i * 6.5));
 let pMat = new BABYLON.StandardMaterial("pMat"+i, scene); pMat.emissiveColor = new BABYLON.Color3(0.1, 0.4 + (plantGrowth[i] * 0.6), 0.1); p.material = pMat;
 structures.push(p);
 }
-// Dispensers Inside HQ
+// Counter Vending Dispensers Inside Hub
 for (let i = 0; i < unlocks.dispensers; i++) {
-let disp = BABYLON.MeshBuilder.CreateBox("Dispenser_"+i, {width: 3, depth: 3, height: 5}, scene);
-disp.position = new BABYLON.Vector3(12, 2.5, 8 - (i * 7));
-let dMat = new BABYLON.StandardMaterial("dMat"+i, scene); dMat.emissiveColor = new BABYLON.Color3(0.2, 0.8, 0.4); disp.material = dMat;
+let disp = BABYLON.MeshBuilder.CreateBox("Dispenser_"+i, {width: 3.2, depth: 3.2, height: 5.2}, scene);
+disp.position = new BABYLON.Vector3(12, 2.6, 8 - (i * 7.5));
+let dMat = new BABYLON.StandardMaterial("dMat"+i, scene); dMat.emissiveColor = new BABYLON.Color3(0.15, 0.75, 0.35); disp.material = dMat;
 structures.push(disp);
 }
 };
 initGame();
+// --- CORE LIVE ENGINE REAL-TIME RENDER LOOP ---
 engine.runRenderLoop(() => {
+if (loadPercent < 100) return;
 input.poll();
-timeOfDayClock = (timeOfDayClock + 0.0025) % 24;
-// Skybox engine transitions
+timeOfDayClock = (timeOfDayClock + 0.0022) % 24;
+// Sky Dome Transition Logic Engine
 if (timeOfDayClock >= 6 && timeOfDayClock < 18) {
-skyboxMaterial.emissiveColor = new BABYLON.Color3(0.4, 0.6, 0.9);
-sunLight.intensity = 1.8;
+skyboxMaterial.emissiveColor = new BABYLON.Color3(0.38, 0.58, 0.88); sunLight.intensity = 1.8;
 } else {
-skyboxMaterial.emissiveColor = new BABYLON.Color3(0.02, 0.04, 0.08);
-sunLight.intensity = 0.3;
+skyboxMaterial.emissiveColor = new BABYLON.Color3(0.02, 0.03, 0.06); sunLight.intensity = 0.25;
 }
 if (Math.random() < 0.001) { currentWeather = currentWeather === "CLEAR" ? "RAIN" : "CLEAR"; rainParticles.emitRate = currentWeather === "RAIN" ? 120 : 0; }
 const currentPos = stateMode === "Driving" ? activeVehicle.mesh.position : playerMesh.position;
 rainParticles.emitter.copyFrom(currentPos).addInPlace(new BABYLON.Vector3(0, 18, 0));
-// Cop Pursuit Tracker Loop
+// GTA Police Stars Tracking Vector Loops
 if (cooldown > 0) { cooldown--; if(cooldown === 0 && stars > 0) { stars--; if(stars > 0) cooldown = 500; } }
 copCars.forEach((cop, idx) => {
-if(!cop.active && idx < stars) { cop.mesh.setEnabled(true); cop.active = true; cop.mesh.position.copyFrom(currentPos).addInPlace(new BABYLON.Vector3(0,0,65)); }
+if(!cop.active && idx < stars) { cop.mesh.setEnabled(true); cop.active = true; cop.mesh.position.copyFrom(currentPos).addInPlace(new BABYLON.Vector3(0,0,70)); }
 else if(cop.active && idx >= stars) { cop.mesh.setEnabled(false); cop.active = false; }
 if(cop.active) {
 let dir = currentPos.subtract(cop.mesh.position); dir.normalize();
-cop.mesh.rotation.y = Math.atan2(dir.x, dir.z); cop.mesh.position.addInPlace(dir.scale(0.34));
-if(stateMode === "Driving" && BABYLON.Vector3.Distance(cop.mesh.position, activeVehicle.mesh.position) < 4.0) { stars = Math.min(5, stars + 1); cooldown = 500; }
+cop.mesh.rotation.y = Math.atan2(dir.x, dir.z); cop.mesh.position.addInPlace(dir.scale(0.35));
+if(stateMode === "Driving" && BABYLON.Vector3.Distance(cop.mesh.position, activeVehicle.mesh.position) < 4.2) { stars = Math.min(5, stars + 1); cooldown = 500; }
 }
 });
-// Street Traffic Loop
+// Ambient City Obstacle Navigation Layout Track
 trafficCars.forEach(car => {
-car.position.z += 0.22; if (car.position.z > 300) car.position.z = -300;
+car.position.z += 0.24; if (car.position.z > 350) car.position.z = -350;
 if(stateMode === "Driving" && BABYLON.Vector3.Distance(activeVehicle.mesh.position, car.position) < 4.2) { if(stars === 0) { stars = 1; cooldown = 500; } }
 });
-// Greenhouse Processing Tick
+// Automated Commercial Dispensary Operations Tick
 if (stateMode === "Interior") {
-for(let i=0; i<unlocks.grows; i++) { if(plantGrowth[i] < 1.0) plantGrowth[i] += 0.0015; }
+for(let i=0; i<unlocks.grows; i++) { if(plantGrowth[i] < 1.0) plantGrowth[i] += 0.0016; }
 businessProcessingTimer++;
 if (businessProcessingTimer >= 140) {
 businessProcessingTimer = 0;
 if (unlocks.dispensers > 0 && stock > 0) {
 let amountSold = unlocks.dispensers * 2;
-if (stock >= amountSold) { stock -= amountSold; bizBank += (amountSold * 95); }
+if (stock >= amountSold) { stock -= amountSold; bizBank += (amountSold * 98); }
 }
 rebuildDispensaryInterior();
 }
 }
-// Open World Missions Tracking
+// Delivery Smuggling Runs Navigation System
 if (activeMission !== "NONE" && missionMarker) {
-if (BABYLON.Vector3.Distance(currentPos, missionMarker.position) < 5.0) {
-if (missionStage === 1) { missionStage = 2; missionMarker.position.copyFrom(new BABYLON.Vector3(0, 0.1, -19)); }
-else if (missionStage === 2) { bizBank += 4500; stock = Math.min(500, stock + 120); activeMission = "NONE"; missionMarker.dispose(); missionMarker = null; }
+if (BABYLON.Vector3.Distance(currentPos, missionMarker.position) < 5.2) {
+if (missionStage === 1) { missionStage = 2; missionMarker.position.copyFrom(new BABYLON.Vector3(0, 0.1, -20)); }
+else if (missionStage === 2) { bizBank += 4800; stock = Math.min(500, stock + 130); activeMission = "NONE"; missionMarker.dispose(); missionMarker = null; }
 }
 }
-// Input Handling (Entering/Exiting Cars)
+// Interaction Trigger Conversions (Car Hijack/Mount Vector)
 if (input.wasButtonPressed("Y")) {
 if (stateMode === "Walking") {
-if (BABYLON.Vector3.Distance(playerMesh.position, sportsCarMesh.position) < 5.0) { stateMode = "Driving"; activeVehicle = new VehicleController(sportsCarMesh, "Sports"); playerMesh.setEnabled(false); }
-else if (BABYLON.Vector3.Distance(playerMesh.position, deliveryTruckMesh.position) < 6.0) { stateMode = "Driving"; activeVehicle = new VehicleController(deliveryTruckMesh, "Truck"); playerMesh.setEnabled(false); }
-} else if (stateMode === "Driving") { stateMode = "Walking"; playerMesh.position.copyFrom(activeVehicle.mesh.position).addInPlace(new BABYLON.Vector3(-4, 0.5, 0)); playerMesh.setEnabled(true); }
+if (BABYLON.Vector3.Distance(playerMesh.position, sportsCarMesh.position) < 5.5) { stateMode = "Driving"; activeVehicle = new VehicleController(sportsCarMesh, "Sports"); playerMesh.setEnabled(false); }
+else if (BABYLON.Vector3.Distance(playerMesh.position, deliveryTruckMesh.position) < 6.5) { stateMode = "Driving"; activeVehicle = new VehicleController(deliveryTruckMesh, "Truck"); playerMesh.setEnabled(false); }
+} else if (stateMode === "Driving") { stateMode = "Walking"; playerMesh.position.copyFrom(activeVehicle.mesh.position).addInPlace(new BABYLON.Vector3(-4.5, 0.5, 0)); playerMesh.setEnabled(true); }
 }
+// Context Action HUD Mapping UI Linkages
 const prompt = document.getElementById("interact-prompt");
-if (stateMode === "Interior") { prompt.style.display = "block"; prompt.innerText = "A: BUY UPGRADES | B: HARVEST CROPS"; } else { prompt.style.display = "none"; }
+if (stateMode === "Interior") { prompt.style.display = "block"; prompt.innerText = "A: EXPAND EMPIRE UPGRADES | B: HARVEST GROW ROWS"; } else { prompt.style.display = "none"; }
 if (input.wasButtonPressed("A") && stateMode === "Interior") {
 if (unlocks.grows < 3 && bizBank >= 2000) { bizBank -= 2000; unlocks.grows++; rebuildDispensaryInterior(); }
 else if (unlocks.dispensers < 2 && bizBank >= 4000) { bizBank -= 4000; unlocks.dispensers++; rebuildDispensaryInterior(); }
 }
 if (input.wasButtonPressed("B") && stateMode === "Interior") {
-for (let i = 0; i < unlocks.grows; i++) { if (plantGrowth[i] >= 0.8) { plantGrowth[i] = 0.0; stock = Math.min(500, stock + 50); } }
+for (let i = 0; i < unlocks.grows; i++) { if (plantGrowth[i] >= 0.8) { plantGrowth[i] = 0.0; stock = Math.min(500, stock + 55); } }
 rebuildDispensaryInterior();
 }
 if (input.wasButtonPressed("X") && stateMode === "Walking" && activeMission === "NONE") {
@@ -291,28 +348,24 @@ missionMarker.position.copyFrom(nodes[Math.floor(Math.random() * nodes.length)])
 let m = new BABYLON.StandardMaterial("m", scene); m.emissiveColor = new BABYLON.Color3(0.9,0.1,0.1); missionMarker.material = m;
 }
 if (input.wasButtonPressed("Menu")) { SaveSystem.save({ cash, bizBank, stock, unlocks }); }
-// Movement Axis Core Calculations
+// Spatial Motion Vector Formations
 const horizontalAxis = (input.axes && input.axes.length >= 2) ? input.axes[0] : 0;
 const verticalAxis = (input.axes && input.axes.length >= 2) ? input.axes[1] : 0;
 if (stateMode === "Walking") {
 playerMesh.position.x += horizontalAxis * 0.18; playerMesh.position.z += -verticalAxis * 0.18;
-if (Math.abs(horizontalAxis) > 0.1 || Math.abs(verticalAxis) > 0.1) {
-playerMesh.rotation.y = Math.atan2(horizontalAxis, -verticalAxis);
-}
+if (Math.abs(horizontalAxis) > 0.1 || Math.abs(verticalAxis) > 0.1) { playerMesh.rotation.y = Math.atan2(horizontalAxis, -verticalAxis); }
 camera.position.x = playerMesh.position.x; camera.position.z = playerMesh.position.z - 15;
 if (isInsideHQ(playerMesh.position)) { stateMode = "Interior"; rebuildDispensaryInterior(); }
 } else if (stateMode === "Interior") {
 playerMesh.position.x += horizontalAxis * 0.12; playerMesh.position.z += -verticalAxis * 0.12;
-if (Math.abs(horizontalAxis) > 0.1 || Math.abs(verticalAxis) > 0.1) {
-playerMesh.rotation.y = Math.atan2(horizontalAxis, -verticalAxis);
-}
+if (Math.abs(horizontalAxis) > 0.1 || Math.abs(verticalAxis) > 0.1) { playerMesh.rotation.y = Math.atan2(horizontalAxis, -verticalAxis); }
 camera.position.x = playerMesh.position.x; camera.position.z = playerMesh.position.z - 15;
 if (!isInsideHQ(playerMesh.position)) { stateMode = "Walking"; rebuildDispensaryInterior(); }
 } else if (stateMode === "Driving") {
 activeVehicle.update(input.buttons.RT, input.buttons.LT, horizontalAxis, currentWeather === "RAIN");
 camera.position.x = activeVehicle.mesh.position.x; camera.position.z = activeVehicle.mesh.position.z - 18;
 }
-// HUD Sync Update Loop
+// Sync Render Loop Data directly onto Screen Overlay
 document.getElementById("hud-cash").innerText = cash; document.getElementById("hud-biz-bank").innerText = bizBank;
 document.getElementById("hud-stock").innerText = stock; document.getElementById("hud-grows").innerText = unlocks.grows;
 document.getElementById("hud-dispensers").innerText = unlocks.dispensers; document.getElementById("hud-mission").innerText = activeMission;
@@ -323,4 +376,3 @@ scene.render();
 });
 window.addEventListener('resize', () => { engine.resize(); });
 });
-
